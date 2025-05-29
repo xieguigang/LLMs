@@ -1,10 +1,28 @@
 .\" man page create by R# package system.
 .TH OLLAMA 1 2000-Jan "chat" "chat"
 .SH NAME
-chat \- 
+chat \- chat with the LLMs model throught the ollama client
 .SH SYNOPSIS
 \fIchat(\fBmodel\fR as <generic> Ollama, 
 \fBmsg\fR as string);\fR
+.SH DESCRIPTION
+.PP
+chat with the LLMs model throught the ollama client
+.PP
+.SH OPTIONS
+.PP
+\fBmodel\fB \fR\- -. 
+.PP
+.PP
+\fBmsg\fB \fR\- -. 
+.PP
+.SH VALUE
+.PP
+a tuple list that contains the LLMs result output:
+ 
+ 1. output - the LLMs thinking and LLMs @\fBT:Ollama.DeepSeekResponse\fR message
+ 2. function_calls - the @\fBT:Ollama.JSON.FunctionCall.FunctionCall\fR during the LLMs thinking
+.PP
 .SH SEE ALSO
 ollama
 .SH FILES

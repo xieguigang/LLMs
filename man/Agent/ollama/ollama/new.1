@@ -1,10 +1,29 @@
 .\" man page create by R# package system.
 .TH OLLAMA 1 2000-Jan "new" "new"
 .SH NAME
-new \- 
+new \- Create a new ollama client for LLMs chat
 .SH SYNOPSIS
 \fInew(\fBmodel\fR as string, 
-\fBollama_server\fR as string = "127.0.0.1:11434");\fR
+\fBollama_server\fR as string = "127.0.0.1:11434", 
+\fBmax_memory_size\fR as integer = 1000, 
+\fBlogfile\fR as string = \fB<NULL>\fR);\fR
+.SH DESCRIPTION
+.PP
+Create a new ollama client for LLMs chat
+.PP
+.SH OPTIONS
+.PP
+\fBmodel\fB \fR\- -. 
+.PP
+.PP
+\fBollama_server\fB \fR\- -. 
+.PP
+.PP
+\fBmax_memory_size\fB \fR\- -. 
+.PP
+.PP
+\fBlogfile\fB \fR\- -. 
+.PP
 .SH SEE ALSO
 ollama
 .SH FILES
