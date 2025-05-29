@@ -28,6 +28,7 @@ Public Class Ollama : Implements IDisposable
     Dim ai_memory As New Queue(Of History)
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
+    Dim ai_calls As New List(Of FunctionCall)
 
     Private disposedValue As Boolean
 
@@ -42,8 +43,10 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
-    Public Function GetLastFunctionCalls()
-
+    Public Function GetLastFunctionCalls() As FunctionCall()
+        Dim calls = ai_calls.ToArray
+        ai_calls.Clear()
+        Return calls
     End Function
 
     Public Sub AddFunction(func As FunctionModel, Optional f As Func(Of FunctionCall, String) = Nothing)
@@ -124,6 +127,8 @@ Public Class Ollama : Implements IDisposable
                         .tool_call_id = tool_call.id
                     }
                     Dim messages As New List(Of History)(req.messages)
+
+                    Call ai_calls.Add(invoke)
                     Call messages.Add(result.message)
                     Call messages.Add([next])
 

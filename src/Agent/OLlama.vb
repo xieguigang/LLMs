@@ -18,11 +18,37 @@ Imports RInternal = SMRUCC.Rsharp.Runtime.Internal
 <Package("ollama")>
 Module OLlamaDemo
 
+    ''' <summary>
+    ''' Create a new ollama client for LLMs chat
+    ''' </summary>
+    ''' <param name="model"></param>
+    ''' <param name="ollama_server"></param>
+    ''' <param name="max_memory_size"></param>
+    ''' <param name="logfile"></param>
+    ''' <returns></returns>
     <ExportAPI("new")>
-    Public Function create(model As String, Optional ollama_server As String = "127.0.0.1:11434") As Ollama.Ollama
-        Return New Ollama.Ollama(model, ollama_server)
+    Public Function create(model As String,
+                           Optional ollama_server As String = "127.0.0.1:11434",
+                           Optional max_memory_size As Integer = 1000,
+                           Optional logfile As String = Nothing) As Ollama.Ollama
+
+        Return New Ollama.Ollama(model, ollama_server, logfile:=logfile) With {
+            .max_memory_size = max_memory_size
+        }
     End Function
 
+    ''' <summary>
+    ''' chat with the LLMs model throught the ollama client
+    ''' </summary>
+    ''' <param name="model"></param>
+    ''' <param name="msg"></param>
+    ''' <returns>
+    ''' a tuple list that contains the LLMs result output:
+    ''' 
+    ''' 1. output - the LLMs thinking and LLMs <see cref="DeepSeekResponse"/> message
+    ''' 2. function_calls - the <see cref="FunctionCall"/> during the LLMs thinking
+    ''' 
+    ''' </returns>
     <ExportAPI("chat")>
     <RApiReturn("output", "function_calls")>
     Public Function chat(model As Ollama.Ollama, msg As String) As Object
