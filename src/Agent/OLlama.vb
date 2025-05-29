@@ -5,6 +5,7 @@ Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.Scripting.MetaData
 Imports Ollama
 Imports Ollama.JSON.FunctionCall
+Imports SMRUCC.Rsharp
 Imports SMRUCC.Rsharp.Interpreter.ExecuteEngine.ExpressionSymbols.Operators
 Imports SMRUCC.Rsharp.Runtime
 Imports SMRUCC.Rsharp.Runtime.Components
@@ -23,8 +24,12 @@ Module OLlamaDemo
     End Function
 
     <ExportAPI("chat")>
+    <RApiReturn("output", "function_calls")>
     Public Function chat(model As Ollama.Ollama, msg As String) As Object
-        Return model.Chat(msg)
+        Return New list(
+            slot("output") = model.Chat(msg),
+            slot("function_calls") = model.GetLastFunctionCalls
+        )
     End Function
 
     <ExportAPI("add_tool")>

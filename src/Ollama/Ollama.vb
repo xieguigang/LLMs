@@ -42,6 +42,10 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
+    Public Function GetLastFunctionCalls()
+
+    End Function
+
     Public Sub AddFunction(func As FunctionModel, Optional f As Func(Of FunctionCall, String) = Nothing)
         If tools Is Nothing Then
             tools = New List(Of FunctionTool)
