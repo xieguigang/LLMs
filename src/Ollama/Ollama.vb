@@ -43,6 +43,10 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
+    ''' <summary>
+    ''' get the function calls and then clear the function calls history temp cache list
+    ''' </summary>
+    ''' <returns></returns>
     Public Function GetLastFunctionCalls() As FunctionCall()
         Dim calls = ai_calls.ToArray
         ai_calls.Clear()
