@@ -9,7 +9,7 @@ Imports Ollama.JSON.FunctionCall
 ''' <summary>
 ''' the ollama client model
 ''' </summary>
-Public Class Ollama
+Public Class Ollama : Implements IDisposable
 
     Public ReadOnly Property server As String
     Public ReadOnly Property model As String
@@ -17,6 +17,7 @@ Public Class Ollama
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
     Public Property tool_invoke As Func(Of FunctionCall, String)
+    Public Property max_memory_size As Integer = 100000
 
     Public ReadOnly Property url As String
         Get
@@ -24,14 +25,21 @@ Public Class Ollama
         End Get
     End Property
 
-    Dim ai_memory As New List(Of History)
+    Dim ai_memory As New Queue(Of History)
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
 
-    Sub New(model As String, Optional server As String = "127.0.0.1:11434")
+    Private disposedValue As Boolean
+
+    Sub New(model As String, Optional server As String = "127.0.0.1:11434", Optional logfile As String = Nothing)
+        Dim temp_logfile As String = TempFileSystem.GetAppSysTempFile(".jsonl", prefix:="ollama_log_" & App.PID & "-history_message")
+
         Me.model = model
         Me.server = server
-        Me.ai_log = New StreamWriter(TempFileSystem.GetAppSysTempFile(".jsonl", prefix:="ollama_log_" & App.PID & "-history_message").Open(FileMode.OpenOrCreate, doClear:=True))
+        Me.ai_log = New StreamWriter(
+            If(logfile.StringEmpty(, True), temp_logfile, logfile) _
+                .Open(FileMode.OpenOrCreate, doClear:=True)
+        )
     End Sub
 
     Public Sub AddFunction(func As FunctionModel, Optional f As Func(Of FunctionCall, String) = Nothing)
@@ -49,8 +57,18 @@ Public Class Ollama
     Public Function Chat(message As String) As DeepSeekResponse
         Dim newUserMsg As New History With {.content = message, .role = "user"}
 
-        Call ai_memory.Add(newUserMsg)
+        Call ai_memory.Enqueue(newUserMsg)
         Call ai_log.WriteLine(newUserMsg.GetJson)
+
+        If ai_memory.Count > max_memory_size Then
+            For i As Integer = 0 To max_memory_size
+                ai_memory.Dequeue()
+
+                If ai_memory.Count <= max_memory_size Then
+                    Exit For
+                End If
+            Next
+        End If
 
         Dim req As New RequestBody With {
             .messages = ai_memory.ToArray,
@@ -88,7 +106,7 @@ Public Class Ollama
                 Dim result = stream.LoadJSON(Of ResponseBody)
                 Dim deepseek_think = result.message.content
 
-                Call ai_memory.Add(result.message)
+                Call ai_memory.Enqueue(result.message)
                 Call ai_log.WriteLine(stream)
 
                 If deepseek_think = "" AndAlso Not result.message.tool_calls.IsNullOrEmpty Then
@@ -131,4 +149,31 @@ Public Class Ollama
             Throw New Exception(msg)
         End If
     End Function
+
+    Protected Overridable Sub Dispose(disposing As Boolean)
+        If Not disposedValue Then
+            If disposing Then
+                ' TODO: dispose managed state (managed objects)
+                Call ai_log.Flush()
+                Call ai_log.Dispose()
+            End If
+
+            ' TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            ' TODO: set large fields to null
+            disposedValue = True
+        End If
+    End Sub
+
+    ' ' TODO: override finalizer only if 'Dispose(disposing As Boolean)' has code to free unmanaged resources
+    ' Protected Overrides Sub Finalize()
+    '     ' Do not change this code. Put cleanup code in 'Dispose(disposing As Boolean)' method
+    '     Dispose(disposing:=False)
+    '     MyBase.Finalize()
+    ' End Sub
+
+    Public Sub Dispose() Implements IDisposable.Dispose
+        ' Do not change this code. Put cleanup code in 'Dispose(disposing As Boolean)' method
+        Dispose(disposing:=True)
+        GC.SuppressFinalize(Me)
+    End Sub
 End Class
