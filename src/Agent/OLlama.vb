@@ -38,6 +38,26 @@ Module OLlamaDemo
     End Function
 
     ''' <summary>
+    ''' set or get the system message for the ollama client
+    ''' </summary>
+    ''' <param name="model"></param>
+    ''' <param name="msg"></param>
+    ''' <returns></returns>
+    <ExportAPI("system_message")>
+    Public Function system_message(model As Ollama.Ollama,
+                                   <RByRefValueAssign>
+                                   <RRawVectorArgument>
+                                   msg As Object,
+                                   Optional env As Environment = Nothing) As Object
+
+        If Not msg Is Nothing Then
+            model.system_message = CLRVector.asCharacter(msg).JoinBy(vbCrLf)
+        End If
+
+        Return model.system_message
+    End Function
+
+    ''' <summary>
     ''' chat with the LLMs model throught the ollama client
     ''' </summary>
     ''' <param name="model"></param>
