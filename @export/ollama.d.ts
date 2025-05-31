@@ -47,4 +47,14 @@ declare namespace ollama {
      * + default value Is ``null``.
    */
    function new(model: string, ollama_server?: string, max_memory_size?: object, logfile?: string): object;
+   /**
+    * set or get the system message for the ollama client
+    * 
+    * 
+     * @param model -
+     * @param msg -
+     * @param env 
+     * + default value Is ``null``.
+   */
+   function system_message(model: object, msg: any, env?: object): any;
 }
