@@ -2,6 +2,7 @@
 Imports System.Net.Http
 Imports System.Text
 Imports Microsoft.VisualBasic.ApplicationServices
+Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -13,6 +14,12 @@ Public Class Ollama : Implements IDisposable
 
     Public ReadOnly Property server As String
     Public ReadOnly Property model As String
+
+    ''' <summary>
+    ''' system message to the LLMs AI
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property system_message As String
 
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
@@ -100,8 +107,22 @@ Public Class Ollama : Implements IDisposable
         End If
     End Function
 
+    Private Function RequestPayloadJSON(req As RequestBody) As String
+        If req.messages(0).role <> "system" AndAlso Not system_message.StringEmpty(, True) Then
+            req.messages = New History() {
+                New History With {
+                    .role = roles.system.Description,
+                    .content = system_message
+                }
+            }.JoinIterates(req.messages) _
+             .ToArray
+        End If
+
+        Return req.GetJson
+    End Function
+
     Private Function Chat(req As RequestBody) As DeepSeekResponse
-        Dim json_input As String = req.GetJson
+        Dim json_input As String = RequestPayloadJSON(req)
         Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
         Dim settings As New HttpClientHandler With {
             .Proxy = Nothing,
