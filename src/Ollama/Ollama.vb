@@ -36,18 +36,19 @@ Public Class Ollama : Implements IDisposable
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
-    Dim no_history As Boolean
+
+    Dim preserveMemory As Boolean
 
     Private disposedValue As Boolean
 
     Sub New(model As String,
             Optional server As String = "127.0.0.1:11434",
             Optional logfile As String = Nothing,
-            Optional no_history As Boolean = False)
+            Optional preserveMemory As Boolean = False)
 
         Dim temp_logfile As String = TempFileSystem.GetAppSysTempFile(".jsonl", prefix:="ollama_log_" & App.PID & "-history_message")
 
-        Me.no_history = no_history
+        Me.preserveMemory = preserveMemory
         Me.model = model
         Me.server = server
         Me.ai_log = New StreamWriter(
@@ -81,7 +82,7 @@ Public Class Ollama : Implements IDisposable
     Public Function Chat(message As String) As DeepSeekResponse
         Dim newUserMsg As New History With {.content = message, .role = "user"}
 
-        If Not no_history Then
+        If preserveMemory Then
             Call ai_memory.Enqueue(newUserMsg)
             Call ai_log.WriteLine(newUserMsg.GetJson)
 
@@ -97,7 +98,7 @@ Public Class Ollama : Implements IDisposable
         End If
 
         Dim req As New RequestBody With {
-            .messages = If(no_history, {newUserMsg}, ai_memory.ToArray),
+            .messages = If(Not preserveMemory, {newUserMsg}, ai_memory.ToArray),
             .model = model,
             .stream = True,
             .temperature = 0.1,
