@@ -36,12 +36,18 @@ Public Class Ollama : Implements IDisposable
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
+    Dim no_history As Boolean
 
     Private disposedValue As Boolean
 
-    Sub New(model As String, Optional server As String = "127.0.0.1:11434", Optional logfile As String = Nothing)
+    Sub New(model As String,
+            Optional server As String = "127.0.0.1:11434",
+            Optional logfile As String = Nothing,
+            Optional no_history As Boolean = False)
+
         Dim temp_logfile As String = TempFileSystem.GetAppSysTempFile(".jsonl", prefix:="ollama_log_" & App.PID & "-history_message")
 
+        Me.no_history = no_history
         Me.model = model
         Me.server = server
         Me.ai_log = New StreamWriter(
@@ -75,21 +81,23 @@ Public Class Ollama : Implements IDisposable
     Public Function Chat(message As String) As DeepSeekResponse
         Dim newUserMsg As New History With {.content = message, .role = "user"}
 
-        Call ai_memory.Enqueue(newUserMsg)
-        Call ai_log.WriteLine(newUserMsg.GetJson)
+        If Not no_history Then
+            Call ai_memory.Enqueue(newUserMsg)
+            Call ai_log.WriteLine(newUserMsg.GetJson)
 
-        If ai_memory.Count > max_memory_size Then
-            For i As Integer = 0 To max_memory_size
-                ai_memory.Dequeue()
+            If ai_memory.Count > max_memory_size Then
+                For i As Integer = 0 To max_memory_size
+                    ai_memory.Dequeue()
 
-                If ai_memory.Count <= max_memory_size Then
-                    Exit For
-                End If
-            Next
+                    If ai_memory.Count <= max_memory_size Then
+                        Exit For
+                    End If
+                Next
+            End If
         End If
 
         Dim req As New RequestBody With {
-            .messages = ai_memory.ToArray,
+            .messages = If(no_history, {newUserMsg}, ai_memory.ToArray),
             .model = model,
             .stream = True,
             .temperature = 0.1,
