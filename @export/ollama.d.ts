@@ -32,6 +32,11 @@ declare namespace ollama {
    */
    function deepseek_chat(message: string, ollama_serve?: string, model?: string): object;
    /**
+     * @param timeout default value Is ``1``.
+     * @param env default value Is ``null``.
+   */
+   function get_modelinfo(ollama: object, timeout?: number, env?: object): any;
+   /**
     * Create a new ollama client for LLMs chat
     * 
     * 
