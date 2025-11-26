@@ -64,6 +64,7 @@
     </Project>
   </Folder>
   <Folder Name="/renv/">
+    <Project Path="../../GCModeller/src/R-sharp/Library/shares/JsonHelper/JsonHelper.shproj" Id="b2ae1422-d7da-4053-a386-eb2ea9326d68" />
     <Project Path="../../GCModeller/src/R-sharp/R#/Rsharp-netcore5.vbproj">
       <BuildType Solution="Docker|*" Project="Debug" />
       <BuildType Solution="mzkit_win32|*" Project="mzkit" />

@@ -59,7 +59,7 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
-    Public Function GetModelInformation() As JsonObject
+    Public Function GetModelInformation(Optional timeout As Double = 1) As JsonObject
         Dim req As New RequestShowModelInformation With {.model = model}
         Dim url As String = $"http://{_server}/api/show"
         Dim json_input As String = req.GetJson(maskReadonly:=True)
@@ -68,7 +68,7 @@ Public Class Ollama : Implements IDisposable
             .Proxy = Nothing,
             .UseProxy = False
         }
-        Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromSeconds(1)}
+        Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromSeconds(timeout)}
             Dim resp As String = RequestMessage(client, url, content).GetAwaiter.GetResult
             Dim data As JsonObject = JsonParser.Parse(resp)
             Return data

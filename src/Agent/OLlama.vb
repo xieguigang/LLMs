@@ -2,6 +2,7 @@
 Imports Microsoft.VisualBasic.CommandLine.Reflection
 Imports Microsoft.VisualBasic.ComponentModel.DataSourceModel
 Imports Microsoft.VisualBasic.Linq
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Microsoft.VisualBasic.Scripting.MetaData
 Imports Ollama
 Imports Ollama.JSON.FunctionCall
@@ -35,6 +36,11 @@ Module OLlamaDemo
         Return New Ollama.Ollama(model, ollama_server, logfile:=logfile) With {
             .max_memory_size = max_memory_size
         }
+    End Function
+
+    <ExportAPI("get_modelinfo")>
+    Public Function get_modelinfo(ollama As Ollama.Ollama, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
+        Return ollama.GetModelInformation(timeout).createRObj(env)
     End Function
 
     ''' <summary>

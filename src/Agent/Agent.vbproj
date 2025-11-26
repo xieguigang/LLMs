@@ -54,4 +54,6 @@
     <ProjectReference Include="..\Talk\TalkGenerator.vbproj" />
   </ItemGroup>
 
+  <Import Project="..\..\..\GCModeller\src\R-sharp\Library\shares\JsonHelper\JsonHelper.projitems" Label="Shared" />
+
 </Project>
