@@ -1,0 +1,156 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="CFD_win32" />
+    <BuildType Name="Debug" />
+    <BuildType Name="Docker" />
+    <BuildType Name="gcmodeller_desktop" />
+    <BuildType Name="LipidSearch" />
+    <BuildType Name="mzkit" />
+    <BuildType Name="mzkit_win32" />
+    <BuildType Name="NPSearch" />
+    <BuildType Name="PlantMAT" />
+    <BuildType Name="Release" />
+    <BuildType Name="Rsharp_app_release" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/framework/">
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data/Trinity/Trinity.NET5.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="nuget_release" />
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <BuildType Solution="mzkit_win32|*" Project="mzkit" />
+      <BuildType Solution="PlantMAT|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data_science/Graph/graph-netcore5.vbproj">
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <BuildType Solution="PlantMAT|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data_science/Mathematica/Math/Math/Math.NET5.vbproj">
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data_science/NLP/NLP.NET.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="nuget_release" />
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <BuildType Solution="gcmodeller_desktop|*" Project="Debug" />
+      <BuildType Solution="LipidSearch|*" Project="Debug" />
+      <BuildType Solution="mzkit|*" Project="mzkit_win32" />
+      <BuildType Solution="NPSearch|*" Project="Debug" />
+      <BuildType Solution="PlantMAT|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Microsoft.VisualBasic.Core/src/Core.vbproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/mime/application%json/JSON-netcore5.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="mzkit|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../graphQL/src/mysqli/LibMySQL/LibMySQL.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="Docker|*" Project="Release" />
+      <BuildType Solution="gcmodeller_desktop|*" Project="Rsharp_app_release" />
+      <BuildType Solution="LipidSearch|*" Project="Rsharp_app_release" />
+      <BuildType Solution="mzkit_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="mzkit|*" Project="Debug" />
+      <BuildType Solution="NPSearch|*" Project="Rsharp_app_release" />
+      <BuildType Solution="PlantMAT|*" Project="Rsharp_app_release" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/renv/">
+    <Project Path="../../GCModeller/src/R-sharp/R#/Rsharp-netcore5.vbproj">
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <BuildType Solution="mzkit_win32|*" Project="mzkit" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/R-sharp/studio/R-terminal/R-cmd.NET5.vbproj">
+      <BuildType Solution="Docker|*" Project="Debug" />
+      <BuildType Solution="LipidSearch|*" Project="Debug" />
+      <BuildType Solution="NPSearch|*" Project="Debug" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Project Path="Agent/Agent.vbproj">
+    <BuildType Solution="CFD_win32|*" Project="Debug" />
+    <BuildType Solution="Docker|*" Project="Debug" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Debug" />
+    <BuildType Solution="LipidSearch|*" Project="Debug" />
+    <BuildType Solution="mzkit_win32|*" Project="Debug" />
+    <BuildType Solution="mzkit|*" Project="Debug" />
+    <BuildType Solution="NPSearch|*" Project="Debug" />
+    <BuildType Solution="PlantMAT|*" Project="Debug" />
+    <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+  <Project Path="HMM/Test/Test.vbproj">
+    <BuildType Solution="CFD_win32|*" Project="Release" />
+    <BuildType Solution="Docker|*" Project="Debug" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Release" />
+    <BuildType Solution="LipidSearch|*" Project="Release" />
+    <BuildType Solution="mzkit_win32|*" Project="Release" />
+    <BuildType Solution="mzkit|*" Project="Release" />
+    <BuildType Solution="NPSearch|*" Project="Release" />
+    <BuildType Solution="PlantMAT|*" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|*" Project="Release" />
+    <Platform Solution="CFD_win32|x64" Project="x64" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Docker|x64" Project="x64" />
+    <Platform Solution="gcmodeller_desktop|x64" Project="x64" />
+    <Platform Solution="LipidSearch|x64" Project="x64" />
+    <Platform Solution="mzkit_win32|x64" Project="x64" />
+    <Platform Solution="mzkit|x64" Project="x64" />
+    <Platform Solution="NPSearch|x64" Project="x64" />
+    <Platform Solution="PlantMAT|x64" Project="x64" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+  <Project Path="Ollama/Ollama.vbproj">
+    <BuildType Solution="CFD_win32|*" Project="Release" />
+    <BuildType Solution="Docker|*" Project="Release" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Release" />
+    <BuildType Solution="LipidSearch|*" Project="Debug" />
+    <BuildType Solution="mzkit_win32|*" Project="Release" />
+    <BuildType Solution="mzkit|*" Project="Debug" />
+    <BuildType Solution="NPSearch|*" Project="Debug" />
+    <BuildType Solution="PlantMAT|*" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+  <Project Path="Researcher/Researcher.vbproj">
+    <BuildType Solution="CFD_win32|*" Project="Release" />
+    <BuildType Solution="Docker|*" Project="Release" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Release" />
+    <BuildType Solution="LipidSearch|*" Project="Debug" />
+    <BuildType Solution="mzkit_win32|*" Project="Release" />
+    <BuildType Solution="mzkit|*" Project="Debug" />
+    <BuildType Solution="NPSearch|*" Project="Debug" />
+    <BuildType Solution="PlantMAT|*" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+  <Project Path="Talk/TalkGenerator.vbproj">
+    <BuildType Solution="CFD_win32|*" Project="Release" />
+    <BuildType Solution="Docker|*" Project="Debug" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Debug" />
+    <BuildType Solution="LipidSearch|*" Project="Debug" />
+    <BuildType Solution="mzkit_win32|*" Project="Debug" />
+    <BuildType Solution="mzkit|*" Project="Debug" />
+    <BuildType Solution="NPSearch|*" Project="Debug" />
+    <BuildType Solution="PlantMAT|*" Project="Debug" />
+    <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
+    <Platform Solution="CFD_win32|x64" Project="x64" />
+    <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+</Solution>

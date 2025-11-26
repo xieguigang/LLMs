@@ -3,6 +3,8 @@ Imports System.Net.Http
 Imports System.Text
 Imports Microsoft.VisualBasic.ApplicationServices
 Imports Microsoft.VisualBasic.Linq
+Imports Microsoft.VisualBasic.MIME.application.json
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -57,6 +59,22 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
+    Public Function GetModelInformation() As JsonObject
+        Dim req As New RequestShowModelInformation With {.model = model}
+        Dim url As String = $"http://{_server}/api/show"
+        Dim json_input As String = req.GetJson(maskReadonly:=True)
+        Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
+        Dim settings As New HttpClientHandler With {
+            .Proxy = Nothing,
+            .UseProxy = False
+        }
+        Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromSeconds(1)}
+            Dim resp As String = RequestMessage(client, url, content).GetAwaiter.GetResult
+            Dim data As JsonObject = JsonParser.Parse(resp)
+            Return data
+        End Using
+    End Function
+
     ''' <summary>
     ''' get the function calls and then clear the function calls history temp cache list
     ''' </summary>
@@ -84,7 +102,7 @@ Public Class Ollama : Implements IDisposable
 
         If preserveMemory Then
             Call ai_memory.Enqueue(newUserMsg)
-            Call ai_log.WriteLine(newUserMsg.GetJson)
+            Call ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
 
             If ai_memory.Count > max_memory_size Then
                 For i As Integer = 0 To max_memory_size
@@ -127,7 +145,7 @@ Public Class Ollama : Implements IDisposable
              .ToArray
         End If
 
-        Return req.GetJson
+        Return req.GetJson(simpleDict:=True)
     End Function
 
     Private Function Chat(req As RequestBody) As DeepSeekResponse
