@@ -59,7 +59,7 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
-    Public Function GetModelInformation(Optional timeout As Double = 1) As JsonObject
+    Public Async Function GetModelInformation(Optional timeout As Double = 1) As Task(Of JsonObject)
         Dim req As New RequestShowModelInformation With {.model = model}
         Dim url As String = $"http://{_server}/api/show"
         Dim json_input As String = req.GetJson(maskReadonly:=True)
@@ -69,8 +69,8 @@ Public Class Ollama : Implements IDisposable
             .UseProxy = False
         }
         Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromSeconds(timeout)}
-            Dim resp As String = RequestMessage(client, url, content).JoinBy(vbCrLf)
-            Dim data As JsonObject = JsonParser.Parse(resp)
+            Dim resp As IEnumerable(Of String) = Await RequestMessage(client, url, content)
+            Dim data As JsonObject = JsonParser.Parse(resp.JoinBy(vbCrLf))
             Return data
         End Using
     End Function
@@ -97,7 +97,7 @@ Public Class Ollama : Implements IDisposable
         End If
     End Sub
 
-    Public Function Chat(message As String) As DeepSeekResponse
+    Public Async Function Chat(message As String) As Task(Of DeepSeekResponse)
         Dim newUserMsg As New History With {.content = message, .role = "user"}
 
         If preserveMemory Then
@@ -123,7 +123,7 @@ Public Class Ollama : Implements IDisposable
             .tools = If(tools.IsNullOrEmpty, Nothing, tools.ToArray)
         }
 
-        Return Chat(req)
+        Return Await Chat(req)
     End Function
 
     Private Function execExternal(arg As FunctionCall) As String
@@ -148,7 +148,7 @@ Public Class Ollama : Implements IDisposable
         Return req.GetJson(simpleDict:=True)
     End Function
 
-    Private Function Chat(req As RequestBody) As DeepSeekResponse
+    Private Async Function Chat(req As RequestBody) As Task(Of DeepSeekResponse)
         Dim json_input As String = RequestPayloadJSON(req)
         Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
         Dim settings As New HttpClientHandler With {
@@ -157,7 +157,7 @@ Public Class Ollama : Implements IDisposable
         }
 
         Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromHours(1)}
-            Dim jsonl As IEnumerable(Of String) = RequestMessage(client, url, content)
+            Dim jsonl As IEnumerable(Of String) = Await RequestMessage(client, url, content)
             Dim msg As New StringBuilder
 
             For Each stream As String In jsonl
@@ -166,6 +166,7 @@ Public Class Ollama : Implements IDisposable
 
                 Call ai_memory.Enqueue(result.message)
                 Call ai_log.WriteLine(stream)
+                Call Console.Write(deepseek_think)
 
                 If deepseek_think = "" AndAlso Not result.message.tool_calls.IsNullOrEmpty Then
                     ' is function calls
@@ -186,7 +187,7 @@ Public Class Ollama : Implements IDisposable
                     req = New RequestBody(req)
                     req.messages = messages.ToArray
 
-                    Return Chat(req)
+                    Return Await Chat(req)
                 End If
 
                 Call msg.Append(deepseek_think)
@@ -197,22 +198,27 @@ Public Class Ollama : Implements IDisposable
         End Using
     End Function
 
-    Private Shared Iterator Function RequestMessage(client As HttpClient, url As String, content As StringContent) As IEnumerable(Of String)
-        Dim response As HttpResponseMessage = client.PostAsync(url, content).GetAwaiter.GetResult
+    Private Shared Async Function RequestMessage(client As HttpClient, url As String, content As StringContent) As Task(Of IEnumerable(Of String))
+        Dim response As HttpResponseMessage = Await client.PostAsync(url, content)
 
         If Not response.IsSuccessStatusCode Then
-            Dim msg As String = response.Content.ReadAsStringAsync.GetAwaiter.GetResult
+            Dim msg As String = Await response.Content.ReadAsStringAsync
             msg = $"{response.StatusCode.Description}{vbCrLf}{vbCrLf}{msg}"
 
             Throw New Exception(msg)
         End If
 
-        Dim responseStream As Stream = response.Content.ReadAsStream
+        Dim responseStream As Stream = Await response.Content.ReadAsStreamAsync
+
+        Return ReadLines(responseStream)
+    End Function
+
+    Private Shared Iterator Function ReadLines(responseStream As Stream) As IEnumerable(Of String)
         Dim reader As New StreamReader(responseStream)
         Dim line As String
 
         While True
-            line = reader.ReadLineAsync.GetAwaiter.GetResult
+            line = reader.ReadLine
             If line Is Nothing Then
                 Exit While
             End If

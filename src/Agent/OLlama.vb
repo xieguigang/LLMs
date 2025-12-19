@@ -40,7 +40,9 @@ Module OLlamaDemo
 
     <ExportAPI("get_modelinfo")>
     Public Function get_modelinfo(ollama As Ollama.Ollama, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
-        Return ollama.GetModelInformation(timeout).createRObj(env)
+        Dim json As JsonObject = ollama.GetModelInformation(timeout).GetAwaiter.GetResult
+        Dim modelinfo = json.createRObj(env)
+        Return modelinfo
     End Function
 
     ''' <summary>
@@ -79,7 +81,7 @@ Module OLlamaDemo
     <RApiReturn("output", "function_calls")>
     Public Function chat(model As Ollama.Ollama, msg As String) As Object
         Return New list(
-            slot("output") = model.Chat(msg),
+            slot("output") = model.Chat(msg).GetAwaiter.GetResult,
             slot("function_calls") = model.GetLastFunctionCalls
         )
     End Function

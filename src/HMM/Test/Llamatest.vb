@@ -12,7 +12,8 @@ Module Llamatest
 
 
         ' test deepseek
-        Dim result = DeepSeekResponse.Chat("who are you?", "127.0.0.1:11434", "deepseek-r1:32b")
+        ' deepseek-r1:32b
+        Dim result = DeepSeekResponse.Chat("who are you?", "127.0.0.1:11434", "qwen3:30b")
 
         Call Console.WriteLine(result.think)
         Call Console.WriteLine()
@@ -42,7 +43,7 @@ Module Llamatest
             .tool_invoke = AddressOf RunFunctionTool,
             .temperature = 0.99
         }
-        Dim test_call = ollama.Chat("what is the time of beijing city now?")
+        Dim test_call = ollama.Chat("what is the time of beijing city now?").GetAwaiter.GetResult
 
         Call Console.WriteLine(test_call.think)
         Call Console.WriteLine(New String("-", 120))
