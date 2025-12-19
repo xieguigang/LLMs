@@ -69,7 +69,7 @@ Public Class Ollama : Implements IDisposable
             .UseProxy = False
         }
         Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromSeconds(timeout)}
-            Dim resp As String = RequestMessage(client, url, content).GetAwaiter.GetResult
+            Dim resp As String = RequestMessage(client, url, content).JoinBy(vbCrLf)
             Dim data As JsonObject = JsonParser.Parse(resp)
             Return data
         End Using
@@ -157,8 +157,7 @@ Public Class Ollama : Implements IDisposable
         }
 
         Using client As New HttpClient(settings) With {.Timeout = TimeSpan.FromHours(1)}
-            Dim resp As String = RequestMessage(client, url, content).GetAwaiter.GetResult
-            Dim jsonl As String() = resp.LineTokens
+            Dim jsonl As IEnumerable(Of String) = RequestMessage(client, url, content)
             Dim msg As New StringBuilder
 
             For Each stream As String In jsonl
@@ -198,17 +197,27 @@ Public Class Ollama : Implements IDisposable
         End Using
     End Function
 
-    Private Shared Async Function RequestMessage(client As HttpClient, url As String, content As StringContent) As Task(Of String)
-        Dim response As HttpResponseMessage = Await client.PostAsync(url, content)
+    Private Shared Iterator Function RequestMessage(client As HttpClient, url As String, content As StringContent) As IEnumerable(Of String)
+        Dim response As HttpResponseMessage = client.PostAsync(url, content).GetAwaiter.GetResult
 
-        If response.IsSuccessStatusCode Then
-            Return Await response.Content.ReadAsStringAsync()
-        Else
-            Dim msg As String = Await response.Content.ReadAsStringAsync()
+        If Not response.IsSuccessStatusCode Then
+            Dim msg As String = response.Content.ReadAsStringAsync.GetAwaiter.GetResult
             msg = $"{response.StatusCode.Description}{vbCrLf}{vbCrLf}{msg}"
 
             Throw New Exception(msg)
         End If
+
+        Dim responseStream As Stream = response.Content.ReadAsStream
+        Dim reader As New StreamReader(responseStream)
+        Dim line As String
+
+        While True
+            line = reader.ReadLineAsync.GetAwaiter.GetResult
+            If line Is Nothing Then
+                Exit While
+            End If
+            Yield line
+        End While
     End Function
 
     Protected Overridable Sub Dispose(disposing As Boolean)
