@@ -3,11 +3,14 @@ Imports System.Net
 Imports System.Net.Sockets
 Imports System.Runtime
 Imports System.Text
+Imports Flute.Http.Configurations
+Imports Flute.Http.Core
 Imports Microsoft.VisualBasic.ApplicationServices
 Imports Microsoft.VisualBasic.CommandLine.Reflection
 Imports Microsoft.VisualBasic.ComponentModel.DataSourceModel
 Imports Microsoft.VisualBasic.Language
 Imports Microsoft.VisualBasic.Linq
+Imports Microsoft.VisualBasic.Net.Http
 Imports Microsoft.VisualBasic.Serialization.JSON
 
 ''' <summary>
@@ -55,7 +58,7 @@ Public Class OllamaProxyServer
         Try
             ' Read the original JSON request
             Dim jsonReq As String = File.ReadAllText(tempFile, Encoding.UTF8)
-            Dim obj = Json.parse(Of Dictionary(Of String, Object))(jsonReq)
+            Dim obj = jsonReq.LoadJSON(Of Dictionary(Of String, Object))
 
             If Not obj.ContainsKey("messages") OrElse Not TypeOf obj("messages") Is IEnumerable(Of Object) Then
                 p.writeFailure(HTTP_RFC.RFC_BAD_REQUEST, "Invalid messages format.")
@@ -125,10 +128,11 @@ Public Class OllamaProxyServer
                 p.outputStream.WriteLine() ' End headers
 
                 Using reader As New StreamReader(resp.GetResponseStream())
-                    Dim line As String
+                    Dim line As Value(Of String) = ""
+
                     While (line = reader.ReadLine()) IsNot Nothing
                         ' Forward each line as SSE
-                        p.outputStream.WriteLine($"data: {line}")
+                        p.outputStream.WriteLine($"data: {CStr(line)}")
                         p.outputStream.WriteLine()
                         p.outputStream.Flush()
                     End While
@@ -168,6 +172,7 @@ Public Class OllamaProxyServer
         ' TODO: Replace with actual RAG logic (e.g., vector DB lookup, BM25, etc.)
         ' Example:
         '   Return MyVectorDB.Search(query, topK:=3).Join(vbCrLf)
+        Return "hello world"
         Return "" ' No context by default
     End Function
 End Class
