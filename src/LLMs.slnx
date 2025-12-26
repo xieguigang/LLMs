@@ -143,6 +143,7 @@
     <BuildType Solution="NPSearch|*" Project="Debug" />
     <BuildType Solution="PlantMAT|*" Project="Release" />
     <BuildType Solution="Rsharp_app_release|*" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
     <Platform Solution="Rsharp_app_release|x64" Project="x64" />
   </Project>
   <Project Path="Researcher/Researcher.vbproj">
@@ -156,6 +157,7 @@
     <BuildType Solution="PlantMAT|*" Project="Release" />
     <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
     <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
     <Platform Solution="Rsharp_app_release|x64" Project="x64" />
   </Project>
   <Project Path="Talk/TalkGenerator.vbproj">

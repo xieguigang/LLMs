@@ -22,7 +22,9 @@ Public Module Main
     '    End Function
 
     Public Sub Main()
-        Call streamTest.Main2().GetAwaiter.GetResult()
+        Call testProxy.runHttp()
+
+        ' Call streamTest.Main2().GetAwaiter.GetResult()
 
         ' Call Llamatest.Main2()
         '        Call HMMTextGenerator.Main33()
