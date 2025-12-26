@@ -16,6 +16,13 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/framework/">
+    <Project Path="../../GCModeller/src/runtime/httpd/src/Flute/Flute.NET5.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="Docker|*" Project="Release" />
+      <BuildType Solution="mzkit|*" Project="Debug" />
+      <BuildType Solution="NPSearch|*" Project="Rsharp_app_release" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data/Trinity/Trinity.NET5.vbproj">
       <BuildType Solution="CFD_win32|*" Project="nuget_release" />
       <BuildType Solution="Docker|*" Project="Debug" />
@@ -124,6 +131,18 @@
     <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
     <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
     <Platform Solution="Debug|x64" Project="x64" />
+    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
+  </Project>
+  <Project Path="OllamaProxy/OllamaProxy.vbproj" Id="f399c357-ffc6-4376-95b6-7e9d3f2cec99">
+    <BuildType Solution="CFD_win32|*" Project="Release" />
+    <BuildType Solution="Docker|*" Project="Release" />
+    <BuildType Solution="gcmodeller_desktop|*" Project="Release" />
+    <BuildType Solution="LipidSearch|*" Project="Debug" />
+    <BuildType Solution="mzkit_win32|*" Project="Release" />
+    <BuildType Solution="mzkit|*" Project="Debug" />
+    <BuildType Solution="NPSearch|*" Project="Debug" />
+    <BuildType Solution="PlantMAT|*" Project="Release" />
+    <BuildType Solution="Rsharp_app_release|*" Project="Release" />
     <Platform Solution="Rsharp_app_release|x64" Project="x64" />
   </Project>
   <Project Path="Researcher/Researcher.vbproj">
