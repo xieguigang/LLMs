@@ -107,7 +107,7 @@ class OllamaRAGProxy:
     def __init__(self, ollama_host: str = "http://localhost:11434", 
                  vector_db_path: str = "vector_db.json",
                  embedding_model: str = "nomic-embed-text",
-                 llm_model: str = "llama3"):
+                 llm_model: str = "deepseek-r1:8b"):
         self.ollama_host = ollama_host
         self.vector_db = VectorDB(vector_db_path)
         self.embedding_model = embedding_model
@@ -163,6 +163,8 @@ class OllamaRAGProxy:
         return chunks
     
     async def process_document(self, file_path: str, doc_id: str = None) -> bool:
+        logger.info(file_path)
+
         """处理文档并添加到向量数据库"""
         try:
             # 读取文档内容
@@ -291,22 +293,23 @@ class OllamaRAGProxy:
 async def create_app():
     app = web.Application()
     
-    # 创建全局RAG代理实例
-    rag_proxy = None
+    # 创建全局RAG代理实例（但不立即启动会话）
+    rag_proxy = OllamaRAGProxy()
+    app['rag_proxy'] = rag_proxy
     
-    async def initialize_rag_proxy(app):
-        nonlocal rag_proxy
-        rag_proxy = OllamaRAGProxy()
-        await rag_proxy.__aenter__()
-        app['rag_proxy'] = rag_proxy
+    # 启动时创建会话
+    async def startup(app):
+        proxy = app['rag_proxy']
+        proxy.session = aiohttp.ClientSession()
     
-    async def cleanup_rag_proxy(app):
-        nonlocal rag_proxy
-        if rag_proxy:
-            await rag_proxy.__aexit__(None, None, None)
+    # 清理时关闭会话
+    async def cleanup(app):
+        proxy = app['rag_proxy']
+        if proxy and proxy.session:
+            await proxy.session.close()
     
-    app.on_startup.append(initialize_rag_proxy)
-    app.on_cleanup.append(cleanup_rag_proxy)
+    app.on_startup.append(startup)
+    app.on_cleanup.append(cleanup)
     
     # 添加CORS中间件
     async def cors_middleware(app, handler):
@@ -425,7 +428,7 @@ def main():
     parser.add_argument('--port', type=int, default=8000, help='服务器端口')
     parser.add_argument('--ollama-host', default='http://localhost:11434', help='Ollama服务地址')
     parser.add_argument('--embedding-model', default='nomic-embed-text', help='嵌入模型')
-    parser.add_argument('--llm-model', default='llama3', help='LLM模型')
+    parser.add_argument('--llm-model', default='deepseek-r1:8b', help='LLM模型')
     parser.add_argument('--vector-db-path', default='vector_db.json', help='向量数据库路径')
     
     args = parser.parse_args()
