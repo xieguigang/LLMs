@@ -23,6 +23,11 @@
       <BuildType Solution="NPSearch|*" Project="Rsharp_app_release" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data/DataFrame/dataframework-netcore5.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="LipidSearch" />
+      <BuildType Solution="Docker|*" Project="Release" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data/Trinity/Trinity.NET5.vbproj">
       <BuildType Solution="CFD_win32|*" Project="nuget_release" />
       <BuildType Solution="Docker|*" Project="Debug" />
