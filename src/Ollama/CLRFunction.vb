@@ -9,7 +9,9 @@ Imports any = Microsoft.VisualBasic.Scripting
 Module CLRFunction
 
     Public Iterator Function GetTarget(obj As Type, name As String) As IEnumerable(Of MethodInfo)
-        Dim list = obj.GetMethods.Where(Function(a) a.Name = name).ToArray
+        Dim list = CType(obj, TypeInfo).DeclaredMethods _
+            .Where(Function(a) a.Name = name) _
+            .ToArray
 
         For Each method As MethodInfo In list
             If method.GetCustomAttribute(Of DescriptionAttribute) IsNot Nothing Then
@@ -44,7 +46,7 @@ Module CLRFunction
             params(arg.Name) = New ParameterProperties With {
                 .name = arg.Name,
                 .description = arg.Description,
-                .type = arg.Pipeline.Description.ToLower
+                .type = arg.TokenType.Description.ToLower
             }
         Next
 

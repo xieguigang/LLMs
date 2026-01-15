@@ -110,9 +110,10 @@ Public Class Ollama : Implements IDisposable
         Next
     End Sub
 
-    Public Sub Clear()
+    Public Function Clear() As Ollama
         Call ai_memory.Clear()
-    End Sub
+        Return Me
+    End Function
 
     Public Sub AddSystemPrompt(text As String)
         Call ai_memory.Enqueue(New History With {
