@@ -16,6 +16,19 @@ Namespace JSON.FunctionCall
         Public Property properties As Dictionary(Of String, ParameterProperties)
         Public Property required As String()
 
+        Default Public Property Argument(name As String) As ParameterProperties
+            Get
+                Return properties.TryGetValue(name)
+            End Get
+            Set(value As ParameterProperties)
+                If value Is Nothing Then
+                    properties.Remove(name)
+                Else
+                    properties(name) = value
+                End If
+            End Set
+        End Property
+
     End Class
 
     Public Class ParameterProperties

@@ -1,5 +1,6 @@
 ﻿Imports System.IO
 Imports System.Net.Http
+Imports System.Reflection
 Imports System.Text
 Imports Microsoft.VisualBasic.ApplicationServices
 Imports Microsoft.VisualBasic.Linq
@@ -46,7 +47,7 @@ Public Class Ollama : Implements IDisposable
     Sub New(model As String,
             Optional server As String = "127.0.0.1:11434",
             Optional logfile As String = Nothing,
-            Optional preserveMemory As Boolean = False)
+            Optional preserveMemory As Boolean = True)
 
         Dim temp_logfile As String = TempFileSystem.GetAppSysTempFile(".jsonl", prefix:="ollama_log_" & App.PID & "-history_message")
 
@@ -95,6 +96,29 @@ Public Class Ollama : Implements IDisposable
         If Not f Is Nothing Then
             Call ai_caller.Register(func.name, f)
         End If
+    End Sub
+
+    ''' <summary>
+    ''' add a new clr function
+    ''' </summary>
+    ''' <typeparam name="T"></typeparam>
+    ''' <param name="obj"></param>
+    ''' <param name="fun"></param>
+    Public Sub AddFunction(Of T)(obj As T, fun As String)
+        For Each handle As MethodInfo In CLRFunction.GetTarget(GetType(T), fun)
+            Call AddFunction(handle.GetMetadata, CLRFunction.Caller(obj, handle))
+        Next
+    End Sub
+
+    Public Sub Clear()
+        Call ai_memory.Clear()
+    End Sub
+
+    Public Sub AddSystemPrompt(text As String)
+        Call ai_memory.Enqueue(New History With {
+            .content = text,
+            .role = roles.system.ToString
+        })
     End Sub
 
     Public Async Function Chat(message As String) As Task(Of DeepSeekResponse)
