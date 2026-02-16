@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Researcher</RootNamespace>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
     <AssemblyTitle>LLMs researcher agent</AssemblyTitle>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <Platforms>AnyCPU;x64</Platforms>
