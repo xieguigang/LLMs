@@ -50,8 +50,10 @@ declare namespace ollama {
      * @param logfile -
      * 
      * + default value Is ``null``.
+     * @param preserve_memory 
+     * + default value Is ``true``.
    */
-   function new(model: string, ollama_server?: string, max_memory_size?: object, logfile?: string): object;
+   function new(model: string, ollama_server?: string, max_memory_size?: object, logfile?: string, preserve_memory?: boolean): object;
    /**
     * hooks of the global LLMs api
     * 
