@@ -38,6 +38,11 @@ Module OLlamaDemo
         }
     End Function
 
+    ''' <summary>
+    ''' hooks of the global LLMs api
+    ''' </summary>
+    ''' <param name="ollama"></param>
+    ''' <returns></returns>
     <ExportAPI("setup_global_hook")>
     Public Function setup_global_hook(ollama As Ollama.Ollama) As Object
         Call LLMs.HookOllama(
