@@ -38,6 +38,19 @@ Module OLlamaDemo
         }
     End Function
 
+    <ExportAPI("setup_global_hook")>
+    Public Function setup_global_hook(ollama As Ollama.Ollama) As Object
+        Call LLMs.HookOllama(
+            chat:=Function(prompt)
+                      Dim msg = ollama.Chat(prompt).GetAwaiter.GetResult
+                      Dim text As String = msg?.output
+
+                      Return text
+                  End Function)
+
+        Return Nothing
+    End Function
+
     <ExportAPI("get_modelinfo")>
     Public Function get_modelinfo(ollama As Ollama.Ollama, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
         Dim json As JsonObject = ollama.GetModelInformation(timeout).GetAwaiter.GetResult
@@ -69,7 +82,7 @@ Module OLlamaDemo
     ''' chat with the LLMs model throught the ollama client
     ''' </summary>
     ''' <param name="model"></param>
-    ''' <param name="msg"></param>
+    ''' <param name="prompt"></param>
     ''' <returns>
     ''' a tuple list that contains the LLMs result output:
     ''' 
@@ -79,9 +92,9 @@ Module OLlamaDemo
     ''' </returns>
     <ExportAPI("chat")>
     <RApiReturn("output", "function_calls")>
-    Public Function chat(model As Ollama.Ollama, msg As String) As Object
+    Public Function chat(model As Ollama.Ollama, prompt As String) As Object
         Return New list(
-            slot("output") = model.Chat(msg).GetAwaiter.GetResult,
+            slot("output") = model.Chat(prompt).GetAwaiter.GetResult,
             slot("function_calls") = model.GetLastFunctionCalls
         )
     End Function
