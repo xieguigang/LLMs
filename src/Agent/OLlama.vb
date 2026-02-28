@@ -31,9 +31,12 @@ Module OLlamaDemo
     Public Function create(model As String,
                            Optional ollama_server As String = "127.0.0.1:11434",
                            Optional max_memory_size As Integer = 1000,
-                           Optional logfile As String = Nothing) As Ollama.Ollama
+                           Optional logfile As String = Nothing,
+                           Optional preserve_memory As Boolean = True) As Ollama.Ollama
 
-        Return New Ollama.Ollama(model, ollama_server, logfile:=logfile) With {
+        Return New Ollama.Ollama(model, ollama_server,
+                                 logfile:=logfile,
+                                 preserveMemory:=preserve_memory) With {
             .max_memory_size = max_memory_size
         }
     End Function
