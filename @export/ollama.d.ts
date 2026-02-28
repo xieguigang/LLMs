@@ -19,13 +19,13 @@ declare namespace ollama {
     * 
     * 
      * @param model -
-     * @param msg -
+     * @param prompt -
      * @return a tuple list that contains the LLMs result output:
      *  
      *  1. output - the LLMs thinking and LLMs @``T:Ollama.DeepSeekResponse`` message
      *  2. function_calls - the @``T:Ollama.JSON.FunctionCall.FunctionCall`` during the LLMs thinking
    */
-   function chat(model: object, msg: string): object;
+   function chat(model: object, prompt: string): object;
    /**
      * @param ollama_serve default value Is ``'127.0.0.1:11434'``.
      * @param model default value Is ``'deepseek-r1:671b'``.
@@ -52,6 +52,13 @@ declare namespace ollama {
      * + default value Is ``null``.
    */
    function new(model: string, ollama_server?: string, max_memory_size?: object, logfile?: string): object;
+   /**
+    * hooks of the global LLMs api
+    * 
+    * 
+     * @param ollama -
+   */
+   function setup_global_hook(ollama: object): any;
    /**
     * set or get the system message for the ollama client
     * 

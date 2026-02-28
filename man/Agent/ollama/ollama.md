@@ -3,6 +3,7 @@
 
 
 + [new](ollama/new.1) Create a new ollama client for LLMs chat
++ [setup_global_hook](ollama/setup_global_hook.1) hooks of the global LLMs api
 + [get_modelinfo](ollama/get_modelinfo.1) 
 + [system_message](ollama/system_message.1) set or get the system message for the ollama client
 + [chat](ollama/chat.1) chat with the LLMs model throught the ollama client
