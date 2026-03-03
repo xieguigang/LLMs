@@ -1,5 +1,7 @@
 imports "chatglm" from "Agent";
 
-const .onLoad = function() {
-    print("LLMs agent for R# language programming");
+const .onLoad = function(quietly=FALSE) {
+    if (!quietly) {
+        # message("LLMs agent for R# language programming");
+    }    
 }

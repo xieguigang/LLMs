@@ -5,8 +5,9 @@
 declare namespace LLMs {
    module _ {
       /**
+        * @param quietly default value Is ``false``.
       */
-      function onLoad(): object;
+      function onLoad(quietly?: any): object;
    }
    /**
    */
