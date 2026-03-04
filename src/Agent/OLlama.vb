@@ -100,9 +100,15 @@ Module OLlamaDemo
     ''' </returns>
     <ExportAPI("chat")>
     <RApiReturn("output", "function_calls")>
-    Public Function chat(model As Ollama.Ollama, prompt As String) As Object
+    Public Function chat(model As Ollama.Ollama, prompt As String, Optional text_response As Boolean = True) As Object
+        Dim response = model.Chat(prompt).GetAwaiter.GetResult
+
+        If text_response Then
+            Return response?.output
+        End If
+
         Return New list(
-            slot("output") = model.Chat(prompt).GetAwaiter.GetResult,
+            slot("output") = response,
             slot("function_calls") = model.GetLastFunctionCalls
         )
     End Function
