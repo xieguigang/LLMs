@@ -20,12 +20,14 @@ declare namespace ollama {
     * 
      * @param model -
      * @param prompt -
+     * @param text_response 
+     * + default value Is ``true``.
      * @return a tuple list that contains the LLMs result output:
      *  
      *  1. output - the LLMs thinking and LLMs @``T:Ollama.DeepSeekResponse`` message
      *  2. function_calls - the @``T:Ollama.JSON.FunctionCall.FunctionCall`` during the LLMs thinking
    */
-   function chat(model: object, prompt: string): object;
+   function chat(model: object, prompt: string, text_response?: boolean): object;
    /**
      * @param ollama_serve default value Is ``'127.0.0.1:11434'``.
      * @param model default value Is ``'deepseek-r1:671b'``.
