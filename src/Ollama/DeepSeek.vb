@@ -25,6 +25,19 @@ Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by Deep
         Return New Ollama(model, ollama_server).Chat(message).GetAwaiter.GetResult
     End Function
 
+    ''' <summary>
+    ''' get output text
+    ''' </summary>
+    ''' <param name="result"></param>
+    ''' <returns></returns>
+    Public Shared Narrowing Operator CType(result As DeepSeekResponse) As String
+        If result Is Nothing Then
+            Return Nothing
+        Else
+            Return result.output
+        End If
+    End Operator
+
 End Class
 
 
