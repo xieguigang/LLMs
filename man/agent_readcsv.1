@@ -1,11 +1,20 @@
-﻿.TH AGENT_READCSV 1 2026-4月 "" "agent_readcsv"
+﻿.TH AGENT_READCSV 1 2026-4月 "" "function for read csv table"
 .SH NAME
-agent_readcsv \- agent_readcsv()
+agent_readcsv \- agent_readcsv(file)
 .SH SYNOPSIS
-\fIagent_readcsv()\fR
+\fIagent_readcsv(file)\fR
+.SH OPTIONS
+.PP
+\fBfile\fB \fR\- . the filepath of the csv table file
+.PP
+.SH VALUE
+.PP
+this function returns a json encode text of the csv data,
+csv data is encoded as the row json
+.PP
 .SH FILES
 .PP
-SMRUCC/R#.declare_function.agent_readcsv at read.csv.R:line 1
+SMRUCC/R#.declare_function.agent_readcsv at read.csv.R:line 9
 .PP
 .SH COPYRIGHT
 Copyright © xieguigang, MIT Licensed 2026

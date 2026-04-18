@@ -11,5 +11,5 @@ declare namespace LLMs {
    }
    /**
    */
-   function agent_readcsv(): object;
+   function agent_readcsv(file: any): object;
 }

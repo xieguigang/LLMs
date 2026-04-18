@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>agent_readcsv</title>
+    <title>function for read csv table</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <link rel="stylesheet" type="text/css" href="../../_assets/page.css">
@@ -18,7 +18,7 @@
             </tr>
         </table>
 
-        <h2>agent_readcsv</h2>
+        <h2>function for read csv table</h2>
 
         <h3>Description</h3>
 
@@ -27,13 +27,16 @@
         <h3>Usage</h3>
 
         <div style="width: 100%; padding-left: 3%; color: black;">
-            <pre><code class='language-R' style="color: black; font-weight:normal;"><strong>agent_readcsv</strong>();</code></pre>
+            <pre><code class='language-R' style="color: black; font-weight:normal;"><strong>agent_readcsv</strong>(<i>file</i>);</code></pre>
         </div>
 
         <h3>Arguments</h3>
 
         <table>
             
+<dt>file</dt>
+<dd><p><p>the filepath of the csv table file</p></p></dd>
+
         </table>
 
 
@@ -47,7 +50,8 @@
 
         <h3>Value</h3>
 
-        This function has no value returns.
+        <p>this function returns a json encode text of the csv data,
+csv data is encoded as the row json</p>
 
         <h3 style="display: none;">Examples</h3>
 
