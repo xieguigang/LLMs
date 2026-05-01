@@ -1,12 +1,31 @@
-﻿Imports System.Text
+﻿Imports System.IO
+Imports System.Text
 Imports System.Threading
+Imports Ollama.JSON
+Imports System.IO
+Imports System.Net.Http
+Imports System.Reflection
+Imports System.Text
+Imports Microsoft.VisualBasic.ApplicationServices
+Imports Microsoft.VisualBasic.Linq
+Imports Microsoft.VisualBasic.MIME.application.json
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Microsoft.VisualBasic.Serialization.JSON
+Imports Ollama.JSON
+Imports Ollama.JSON.FunctionCall
 
 Public Class LLMClient : Implements IDisposable
 
     Private ReadOnly _provider As ILLMProvider
     Private ReadOnly _model As String
 
-    ' ... 保留之前的 ai_memory, tools, ai_caller 等字段 ...
+    Dim ai_memory As New Queue(Of History)
+    Dim ai_caller As New FunctionCaller
+    Dim ai_log As TextWriter
+    Dim ai_calls As New List(Of FunctionCall)
+
+    Public Property temperature As Double = 0.1
+    Public Property tools As List(Of FunctionTool)
 
     Sub New(provider As ILLMProvider, model As String, Optional logfile As String = Nothing)
         _provider = provider
