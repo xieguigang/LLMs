@@ -2,16 +2,6 @@
 Imports System.Text
 Imports System.Threading
 Imports Ollama.JSON
-Imports System.IO
-Imports System.Net.Http
-Imports System.Reflection
-Imports System.Text
-Imports Microsoft.VisualBasic.ApplicationServices
-Imports Microsoft.VisualBasic.Linq
-Imports Microsoft.VisualBasic.MIME.application.json
-Imports Microsoft.VisualBasic.MIME.application.json.Javascript
-Imports Microsoft.VisualBasic.Serialization.JSON
-Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
 
 Public Class LLMClient : Implements IDisposable
