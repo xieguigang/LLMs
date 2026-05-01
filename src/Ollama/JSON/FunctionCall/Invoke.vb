@@ -4,6 +4,7 @@ Namespace JSON.FunctionCall
     Public Class ToolCall
 
         Public Property id As String
+        Public Property type As String ' "function"
         Public Property [function] As FunctionCall
 
         Public Overrides Function ToString() As String
@@ -20,6 +21,7 @@ Namespace JSON.FunctionCall
     ''' </remarks>
     Public Class FunctionCall
 
+        Public Property index As Integer
         Public Property name As String
         Public Property arguments As Dictionary(Of String, String)
 

@@ -10,7 +10,7 @@ Module Llamatest
         '  Dim test_parse = DeepSeekResponse.ParseResponse(DeepSeekResponse.who_are_you)
         '  Dim list As String() = "E:\HMM\test\stream.jsonl".ReadAllLines
 
-        Dim test_rag = DeepSeekResponse.Chat("为我介绍阿司匹林的药物性值，仅使用下面的json格式返回给我，方便我做自动化解析： {QED: ""value-place-holder"", CYP450:""value-place-holder""}",
+        Dim test_rag = Global.Ollama.OllamaResponse.Chat("为我介绍阿司匹林的药物性值，仅使用下面的json格式返回给我，方便我做自动化解析： {QED: ""value-place-holder"", CYP450:""value-place-holder""}",
 "127.0.0.1:8000", "deepseek-r1:8b")
 
 
@@ -18,7 +18,7 @@ Module Llamatest
 
         ' test deepseek
         ' deepseek-r1:32b
-        Dim result = DeepSeekResponse.Chat("who are you?", "127.0.0.1:11434", "qwen3:30b")
+        Dim result = Global.Ollama.OllamaResponse.Chat("who are you?", "127.0.0.1:11434", "qwen3:30b")
 
         Call Console.WriteLine(result.think)
         Call Console.WriteLine()

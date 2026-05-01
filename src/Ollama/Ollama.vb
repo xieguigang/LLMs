@@ -60,8 +60,8 @@ Public Class Ollama : Implements IDisposable
         )
     End Sub
 
-    Public Async Function GetModelInformation(Optional timeout As Double = 1) As Task(Of JsonObject)
-        Dim req As New RequestShowModelInformation With {.model = model}
+    Public Async Function GetModelInformation(Optional timeout As Double = 1, Optional verbose As Boolean = True) As Task(Of JsonObject)
+        Dim req As New RequestShowModelInformation With {.model = model, .verbose = verbose}
         Dim url As String = $"http://{_server}/api/show"
         Dim json_input As String = req.GetJson(maskReadonly:=True)
         Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
@@ -122,7 +122,7 @@ Public Class Ollama : Implements IDisposable
         })
     End Sub
 
-    Public Async Function Chat(message As String) As Task(Of DeepSeekResponse)
+    Public Async Function Chat(message As String) As Task(Of OllamaResponse)
         Dim newUserMsg As New History With {.content = message, .role = "user"}
 
         If preserveMemory Then
@@ -130,13 +130,9 @@ Public Class Ollama : Implements IDisposable
             Call ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
 
             If ai_memory.Count > max_memory_size Then
-                For i As Integer = 0 To max_memory_size
+                While ai_memory.Count > max_memory_size
                     ai_memory.Dequeue()
-
-                    If ai_memory.Count <= max_memory_size Then
-                        Exit For
-                    End If
-                Next
+                End While
             End If
         End If
 
@@ -144,7 +140,7 @@ Public Class Ollama : Implements IDisposable
             .messages = If(Not preserveMemory, {newUserMsg}, ai_memory.ToArray),
             .model = model,
             .stream = True,
-            .temperature = 0.1,
+            .temperature = temperature,
             .tools = If(tools.IsNullOrEmpty, Nothing, tools.ToArray)
         }
 
@@ -173,7 +169,7 @@ Public Class Ollama : Implements IDisposable
         Return req.GetJson(simpleDict:=True)
     End Function
 
-    Private Async Function Chat(req As RequestBody) As Task(Of DeepSeekResponse)
+    Private Async Function Chat(req As RequestBody) As Task(Of OllamaResponse)
         Dim json_input As String = RequestPayloadJSON(req)
         Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
         Dim settings As New HttpClientHandler With {
@@ -187,13 +183,13 @@ Public Class Ollama : Implements IDisposable
 
             For Each stream As String In jsonl
                 Dim result = stream.LoadJSON(Of ResponseBody)
-                Dim deepseek_think = result.message.content
+                Dim llms_think = result.message.content
 
                 Call ai_memory.Enqueue(result.message)
                 Call ai_log.WriteLine(stream)
-                Call Console.Write(deepseek_think)
+                Call Console.Write(llms_think)
 
-                If deepseek_think = "" AndAlso Not result.message.tool_calls.IsNullOrEmpty Then
+                If llms_think = "" AndAlso Not result.message.tool_calls.IsNullOrEmpty Then
                     ' is function calls
                     Dim tool_call As ToolCall = result.message.tool_calls(0)
                     Dim invoke As FunctionCall = tool_call.function
@@ -215,10 +211,10 @@ Public Class Ollama : Implements IDisposable
                     Return Await Chat(req)
                 End If
 
-                Call msg.Append(deepseek_think)
+                Call msg.Append(llms_think)
             Next
 
-            Dim output As DeepSeekResponse = DeepSeekResponse.ParseResponse(msg.ToString)
+            Dim output As OllamaResponse = OllamaResponse.ParseResponse(msg.ToString)
             Return output
         End Using
     End Function
@@ -239,16 +235,14 @@ Public Class Ollama : Implements IDisposable
     End Function
 
     Private Shared Iterator Function ReadLines(responseStream As Stream) As IEnumerable(Of String)
-        Dim reader As New StreamReader(responseStream)
-        Dim line As String
-
-        While True
-            line = reader.ReadLine
-            If line Is Nothing Then
-                Exit While
-            End If
-            Yield line
-        End While
+        Using reader As New StreamReader(responseStream)
+            Dim line As String
+            While True
+                line = reader.ReadLine
+                If line Is Nothing Then Exit While
+                Yield line
+            End While
+        End Using
     End Function
 
     Protected Overridable Sub Dispose(disposing As Boolean)

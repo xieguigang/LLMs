@@ -94,7 +94,7 @@ Module OLlamaDemo
     ''' <returns>
     ''' a tuple list that contains the LLMs result output:
     ''' 
-    ''' 1. output - the LLMs thinking and LLMs <see cref="DeepSeekResponse"/> message
+    ''' 1. output - the LLMs thinking and LLMs <see cref="OllamaResponse"/> message
     ''' 2. function_calls - the <see cref="FunctionCall"/> during the LLMs thinking
     ''' 
     ''' </returns>
@@ -188,9 +188,9 @@ Module OLlamaDemo
     <ExportAPI("deepseek_chat")>
     Public Function deepseek_chat(message As String,
                                   Optional ollama_serve As String = "127.0.0.1:11434",
-                                  Optional model As String = "deepseek-r1:671b") As DeepSeekResponse
+                                  Optional model As String = "deepseek-r1:671b") As OllamaResponse
 
-        Return DeepSeekResponse.Chat(message, ollama_serve, model)
+        Return OllamaResponse.Chat(message, ollama_serve, model)
     End Function
 
 End Module
