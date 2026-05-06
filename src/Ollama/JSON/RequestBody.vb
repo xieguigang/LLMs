@@ -9,7 +9,6 @@ Namespace JSON
         ''' </summary>
         ''' <returns></returns>
         Public Property model As String
-        Public Property temperature As Double?
         Public Property messages As History()
         ''' <summary>
         ''' json list response
@@ -17,18 +16,29 @@ Namespace JSON
         ''' <returns></returns>
         Public Property stream As Boolean = False
         Public Property tools As FunctionTool()
+        Public Property options As RequestOptions
 
         Sub New()
         End Sub
 
         Sub New(copy As RequestBody)
             model = copy.model
-            temperature = copy.temperature
             messages = copy.messages.ToArray
             stream = copy.stream
             tools = copy.tools.ToArray
+
+            If copy.options IsNot Nothing Then
+                options = New RequestOptions With {
+                   .temperature = copy.options.temperature
+                }
+            End If
         End Sub
 
     End Class
 
+    Public Class RequestOptions
+
+        Public Property temperature As Double?
+
+    End Class
 End Namespace

@@ -140,7 +140,7 @@ Public Class Ollama : Implements IDisposable
             .messages = If(Not preserveMemory, {newUserMsg}, ai_memory.ToArray),
             .model = model,
             .stream = True,
-            .temperature = temperature,
+            .options = New RequestOptions With {.temperature = temperature},
             .tools = If(tools.IsNullOrEmpty, Nothing, tools.ToArray)
         }
 

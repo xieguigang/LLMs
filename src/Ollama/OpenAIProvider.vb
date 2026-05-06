@@ -1,7 +1,9 @@
 ﻿Imports System.IO
 Imports System.Net.Http
+Imports System.Text
 Imports System.Threading
 Imports Microsoft.VisualBasic.MIME.application.json
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 
 Public Class OpenAIProvider
     Implements ILLMProvider
@@ -37,7 +39,7 @@ Public Class OpenAIProvider
             request.Headers.Authorization = New Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey)
             request.Content = New StringContent(json, Encoding.UTF8, "application/json")
 
-            Dim response = Await SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            Dim response = Await LLMClient.SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             response.EnsureSuccessStatusCode()
 
             ' 3. 解析 OpenAI 的 SSE 流
@@ -59,24 +61,26 @@ Public Class OpenAIProvider
                     Exit While
                 End If
 
-                Dim result = JsonParser.Parse(data)
-                Dim delta = result("choices")(0)("delta")
+                Dim result As JsonObject = JsonParser.Parse(data)
+                Dim delta As JsonObject = DirectCast(DirectCast(result("choices"), JsonArray)(0), JsonObject)("delta")
                 Dim chunk As New ChatResponseChunk With {.IsDone = False}
 
                 ' 解析文本
-                If delta.ContainsKey("content") AndAlso delta("content") IsNot Nothing Then
+                If delta.HasObjectKey("content") AndAlso delta("content") IsNot Nothing Then
                     chunk.DeltaContent = delta("content").ToString()
                 End If
 
                 ' 解析 Tool Calls (OpenAI 的 tool_calls 在 delta 里是数组片段，需要拼装)
-                If delta.ContainsKey("tool_calls") Then
+                If delta.HasObjectKey("tool_calls") Then
                     chunk.ToolCalls = New List(Of ToolCallInfo)
-                    Dim tcArray = delta("tool_calls")
-                    For Each tc In tcArray
+                    Dim tcArray As JsonArray = delta("tool_calls")
+                    For Each tc As JsonObject In tcArray
+                        Dim func As JsonObject = tc("function")
+
                         chunk.ToolCalls.Add(New ToolCallInfo With {
                             .Id = tc("id")?.ToString(),
-                            .FunctionName = tc("function")("name")?.ToString(),
-                            .FunctionArguments = tc("function")("arguments")?.ToString()
+                            .FunctionName = func("name")?.ToString(),
+                            .FunctionArguments = func("arguments")?.CreateObject(Of Dictionary(Of String, String))
                         })
                     Next
                 End If

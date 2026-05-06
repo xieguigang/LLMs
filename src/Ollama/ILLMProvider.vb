@@ -37,7 +37,7 @@ End Class
 Public Class ToolCallInfo
     Public Property Id As String
     Public Property FunctionName As String
-    Public Property FunctionArguments As String ' JSON 字符串
+    Public Property FunctionArguments As Dictionary(Of String, String) ' JSON 字符串
 End Class
 
 ''' <summary>

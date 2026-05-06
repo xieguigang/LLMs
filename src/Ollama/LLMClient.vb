@@ -1,4 +1,5 @@
 ﻿Imports System.IO
+Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
 Imports Ollama.JSON
@@ -9,7 +10,7 @@ Public Class LLMClient : Implements IDisposable
     Private ReadOnly _provider As ILLMProvider
     Private ReadOnly _model As String
 
-    Dim ai_memory As New Queue(Of History)
+    Dim ai_memory As New Queue(Of ChatMessage)
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
@@ -17,11 +18,20 @@ Public Class LLMClient : Implements IDisposable
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
 
+    Friend Shared ReadOnly SharedHttpClient As New HttpClient(New HttpClientHandler With {
+        .Proxy = Nothing,
+        .UseProxy = False
+    }) With {.Timeout = TimeSpan.FromHours(1)}
+
     Sub New(provider As ILLMProvider, model As String, Optional logfile As String = Nothing)
         _provider = provider
         _model = model
         ' ... 初始化日志等 ...
     End Sub
+
+    Private Function ExecuteTool(calle As ToolCallInfo) As String
+        Throw New NotImplementedException
+    End Function
 
     Public Async Function Chat(message As String, Optional cancellationToken As CancellationToken = Nothing) As Task(Of String)
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = message}

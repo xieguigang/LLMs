@@ -1,5 +1,6 @@
 ﻿Imports System.IO
 Imports System.Net.Http
+Imports System.Text
 Imports System.Threading
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
@@ -35,7 +36,7 @@ Public Class OllamaProvider
         ' 2. 发送 HTTP 请求 (使用共享的 HttpClient)
         Dim json = ollamaReq.GetJson(simpleDict:=True)
         Dim content = New StringContent(json, Encoding.UTF8, "application/json")
-        Dim response = Await SharedHttpClient.PostAsync(ApiEndpoint, content, cancellationToken)
+        Dim response = Await LLMClient.SharedHttpClient.PostAsync(ApiEndpoint, content, cancellationToken)
         response.EnsureSuccessStatusCode()
 
         ' 3. 解析 Ollama 的 NDJSON 流
