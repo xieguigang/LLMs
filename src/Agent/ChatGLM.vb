@@ -104,7 +104,7 @@ Public Module ChatGLMHelper
                 .method = "POST",
                 .url = "/v4/chat/completions",
                 .body = New RequestBody With {
-                    .temperature = 0.1,
+                    .options = New RequestOptions With {.temperature = 0.1},
                     .model = "glm-4",
                     .messages = {
                         New History(roles.system, prompt_text),
