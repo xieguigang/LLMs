@@ -9,4 +9,8 @@
     <Configurations>Debug;Release;Rsharp_app_release</Configurations>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Include="glm.txt" />
+  </ItemGroup>
+
 </Project>
