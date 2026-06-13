@@ -1,8 +1,10 @@
-﻿Imports System.IO
+﻿Imports System.ComponentModel
+Imports System.IO
 Imports System.Net.Http
 Imports System.Reflection
 Imports System.Text
 Imports Microsoft.VisualBasic.ApplicationServices
+Imports Microsoft.VisualBasic.CommandLine.Reflection
 Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.MIME.application.json
 Imports Microsoft.VisualBasic.MIME.application.json.Javascript
@@ -86,6 +88,28 @@ Public Class Ollama : Implements IDisposable
         Return calls
     End Function
 
+    ''' <summary>
+    ''' registry custom function tool for LLMs function calling
+    ''' </summary>
+    ''' <param name="func">the function tool metadata, includes the function name, parameter information</param>
+    ''' <param name="f">the clr function call backend for the given <paramref name="func"/> metadata</param>
+    ''' <example>
+    ''' ' define two function parameter
+    ''' Dim a As New ParameterProperties("a", "number a", TypeCode.Double)
+    ''' Dim b As New ParameterProperties("b", "number b", TypeCode.Double)
+    ''' 
+    ''' ' register a new function for add two number.
+    ''' LLMs_ollama.AddFunction(
+    '''    func:=New FunctionModel("number_add", "add two number, return a json string of the two number math add result.", a, b), 
+    '''    f:=Function(calls) 
+    '''           Dim num1 = Val(calls!a)
+    '''           Dim num2 = Val(calls!b)
+    '''           
+    '''           ' return a json string of the two number math add result. 
+    '''           Return $"{{result: {num1 + num2}}}"
+    '''       End Function
+    ''' )
+    ''' </example>
     Public Sub AddFunction(func As FunctionModel, Optional f As Func(Of FunctionCall, String) = Nothing)
         If tools Is Nothing Then
             tools = New List(Of FunctionTool)
@@ -99,11 +123,31 @@ Public Class Ollama : Implements IDisposable
     End Sub
 
     ''' <summary>
-    ''' add a new clr function
+    ''' registry new clr function
     ''' </summary>
     ''' <typeparam name="T"></typeparam>
-    ''' <param name="obj"></param>
-    ''' <param name="fun"></param>
+    ''' <param name="obj">A clr object instance, the container for the function tools that could be called by the LLMs</param>
+    ''' <param name="fun">target function name to get clr function from the given clr <paramref name="obj"/>.</param>
+    ''' <example>
+    ''' ' example for define a container class in VB.NET
+    ''' Public Class MathTool
+    '''     
+    '''     &lt;Description("add two number, return a json string of the two number math add result.")>
+    '''     Public Function number_add(&lt;Argument("a", Description:="number a")>a As Double, 
+    '''                                &lt;Argument("b", Description:="number b")>b As Double) As String
+    '''         Return $"{{result: {a + b}}}"
+    '''     End Function
+    ''' End Class
+    ''' 
+    ''' LLMs_ollama.AddFunction(New MathTool(), fun:= "number_add")
+    ''' </example>
+    ''' <remarks>
+    ''' Reflection custom attribute that used for make function tool annotations for LLMs:
+    ''' 
+    ''' 1. <see cref="DescriptionAttribute"/>: export the function tool description text to LLMs
+    ''' 2. <see cref="ArgumentAttribute"/>: make the annotation description of the function parameters, for make export of the function parameters to LLMs
+    ''' </remarks>
+    ''' 
     Public Sub AddFunction(Of T)(obj As T, fun As String)
         For Each handle As MethodInfo In CLRFunction.GetTarget(GetType(T), fun)
             Call AddFunction(handle.GetMetadata, CLRFunction.Caller(obj, handle))
@@ -122,8 +166,16 @@ Public Class Ollama : Implements IDisposable
         })
     End Sub
 
-    Public Async Function Chat(message As String) As Task(Of OllamaResponse)
-        Dim newUserMsg As New History With {.content = message, .role = "user"}
+    ''' <summary>
+    ''' Chat with LLMs, send the user message to LLMs model and then get response result text
+    ''' </summary>
+    ''' <param name="prompt_text">the prompt text message that send to the LLMs model</param>
+    ''' <returns>
+    ''' the LLMs response output text data, includes <see cref="OllamaResponse.think"/> text and 
+    ''' the real LLMs content <see cref="OllamaResponse.output"/>.
+    ''' </returns>
+    Public Async Function Chat(prompt_text As String) As Task(Of OllamaResponse)
+        Dim newUserMsg As New History With {.content = prompt_text, .role = "user"}
 
         If preserveMemory Then
             Call ai_memory.Enqueue(newUserMsg)

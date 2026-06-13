@@ -1,9 +1,20 @@
 ﻿Imports System.Text
 Imports ASCII = Microsoft.VisualBasic.Text.ASCII
 
+''' <summary>
+''' Ollama LLMs response output
+''' </summary>
 Public Class OllamaResponse
 
+    ''' <summary>
+    ''' the LLMs thinking
+    ''' </summary>
+    ''' <returns></returns>
     Public Property think As String
+    ''' <summary>
+    ''' the LLMs content text result, response to the user prompt text input
+    ''' </summary>
+    ''' <returns></returns>
     Public Property output As String
 
     Public Const who_are_you = "<think>

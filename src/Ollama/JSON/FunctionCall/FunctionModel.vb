@@ -8,6 +8,17 @@ Namespace JSON.FunctionCall
         Public Property description As String
         Public Property parameters As FunctionParameters
 
+        Sub New()
+        End Sub
+
+        Sub New(name As String, desc As String, ParamArray args As ParameterProperties())
+            Me.name = name
+            Me.description = desc
+            Me.parameters = New FunctionParameters With {
+                .properties = args.ToDictionary(Function(a) a.name)
+            }
+        End Sub
+
     End Class
 
     Public Class FunctionParameters
@@ -36,6 +47,15 @@ Namespace JSON.FunctionCall
         Public Property name As String
         Public Property description As String
         Public Property type As String = "string"
+
+        Sub New()
+        End Sub
+
+        Sub New(name As String, desc As String, Optional type As TypeCode = TypeCode.String)
+            Me.name = name
+            Me.description = desc
+            Me.type = type.ToString.ToLower
+        End Sub
 
     End Class
 
