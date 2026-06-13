@@ -28,8 +28,7 @@ Imports System.Text.RegularExpressions
 ''' 4. 迭代优化关键词并继续查询
 ''' 5. 生成综述报告（Markdown → HTML → PDF）
 ''' </remarks>
-Public Class ResearchAgent
-    Implements IDisposable
+Public Class ResearchAgent : Implements IDisposable
 
     ' ---- 常量定义 ----
 
