@@ -1,5 +1,5 @@
-Imports System.IO
 Imports System.Text
+Imports Microsoft.VisualBasic.MIME.application.json
 Imports Ollama.JSON.FunctionCall
 
 ''' <summary>
@@ -242,59 +242,33 @@ Public Class SkillAgent
 
         ' Register with the Ollama client. The lambda is the CLR backend
         ' that actually runs when the LLM invokes this tool.
-        _ollama.AddFunction(
-            funcModel,
-            f:=Function([call])
-                   Dim skillName As String = [call]!skill_name?.ToString()
-                   Dim scriptName As String = [call]!script_name?.ToString()
-                   Dim args As String = ""
-                   If [call]!args IsNot Nothing Then
-                       args = [call]!args.ToString()
-                   End If
-
-                   If String.IsNullOrEmpty(skillName) OrElse String.IsNullOrEmpty(scriptName) Then
-                       Return "{""error"": ""skill_name and script_name are required""}"
-                   End If
-
-                   Dim execResult As ScriptExecutionResult =
-                       _manager.ExecuteScript(skillName, scriptName, args)
-
-                   ' Return a compact JSON summary so the LLM can parse it
-                   Dim stdoutEscaped As String = JsonEscape(execResult.Stdout)
-                   Dim stderrEscaped As String = JsonEscape(execResult.Stderr)
-
-                   Return $"{{""success"": {execResult.Success.ToString().ToLower()}, " &
-                          $"""exit_code"": {execResult.ExitCode}, " &
-                          $"""stdout"": ""{stdoutEscaped}"", " &
-                          $"""stderr"": ""{stderrEscaped}""}}"
-               End Function)
+        Call _ollama.AddFunction(funcModel, f:=AddressOf ScriptExecution)
     End Sub
 
-    ''' <summary>
-    ''' Minimal JSON string escaper. We avoid pulling in System.Web.Script
-    ''' or Newtonsoft.Json just for this one purpose.
-    ''' </summary>
-    Private Shared Function JsonEscape(s As String) As String
-        If s Is Nothing Then Return ""
-        Dim sb As New StringBuilder(s.Length)
-        For Each c As Char In s
-            Select Case c
-                Case "\"c : sb.Append("\\")
-                Case """"c : sb.Append("\""")
-                Case ControlChars.Cr : sb.Append("\r")
-                Case ControlChars.Lf : sb.Append("\n")
-                Case ControlChars.Tab : sb.Append("\t")
-                Case Else
-                    If c < " "c Then
-                        sb.Append("\u" & AscW(c).ToString("x4"))
-                    Else
-                        sb.Append(c)
-                    End If
-            End Select
-        Next
-        Return sb.ToString()
-    End Function
+    Private Function ScriptExecution([call] As FunctionCall) As String
+        Dim skillName As String = [call]!skill_name?.ToString()
+        Dim scriptName As String = [call]!script_name?.ToString()
+        Dim args As String = ""
+        If [call]!args IsNot Nothing Then
+            args = [call]!args.ToString()
+        End If
 
+        If String.IsNullOrEmpty(skillName) OrElse String.IsNullOrEmpty(scriptName) Then
+            Return "{""error"": ""skill_name and script_name are required""}"
+        End If
+
+        Dim execResult As ScriptExecutionResult =
+            _manager.ExecuteScript(skillName, scriptName, args)
+
+        ' Return a compact JSON summary so the LLM can parse it
+        Dim stdoutEscaped As String = JSONTextParser.JsonEscape(execResult.Stdout)
+        Dim stderrEscaped As String = JSONTextParser.JsonEscape(execResult.Stderr)
+
+        Return $"{{""success"": {execResult.Success.ToString().ToLower()}, " &
+               $"""exit_code"": {execResult.ExitCode}, " &
+               $"""stdout"": ""{stdoutEscaped}"", " &
+               $"""stderr"": ""{stderrEscaped}""}}"
+    End Function
 End Class
 
 ''' <summary>
