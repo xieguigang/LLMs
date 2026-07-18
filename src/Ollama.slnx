@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Rsharp_app_release" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="Ollama/Ollama.vbproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+</Solution>
