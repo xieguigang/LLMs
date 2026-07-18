@@ -170,20 +170,6 @@
     <Platform Solution="Debug|x64" Project="x64" />
     <Platform Solution="Rsharp_app_release|x64" Project="x64" />
   </Project>
-  <Project Path="Researcher/Researcher.vbproj">
-    <BuildType Solution="CFD_win32|*" Project="Release" />
-    <BuildType Solution="Docker|*" Project="Release" />
-    <BuildType Solution="gcmodeller_desktop|*" Project="Release" />
-    <BuildType Solution="LipidSearch|*" Project="Debug" />
-    <BuildType Solution="mzkit_win32|*" Project="Release" />
-    <BuildType Solution="mzkit|*" Project="Debug" />
-    <BuildType Solution="NPSearch|*" Project="Debug" />
-    <BuildType Solution="PlantMAT|*" Project="Release" />
-    <BuildType Solution="Rsharp_app_release|Any CPU" Project="Release" />
-    <BuildType Solution="Rsharp_app_release|x86" Project="Release" />
-    <Platform Solution="Debug|x64" Project="x64" />
-    <Platform Solution="Rsharp_app_release|x64" Project="x64" />
-  </Project>
   <Project Path="Talk/TalkGenerator.vbproj">
     <BuildType Solution="CFD_win32|*" Project="Release" />
     <BuildType Solution="Docker|*" Project="Debug" />
