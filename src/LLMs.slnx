@@ -82,6 +82,17 @@
       <BuildType Solution="PlantMAT|*" Project="Rsharp_app_release" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="../../graphQL/src/pubmed/pubmed.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="Docker|*" Project="Release" />
+      <BuildType Solution="gcmodeller_desktop|*" Project="Rsharp_app_release" />
+      <BuildType Solution="LipidSearch|*" Project="Rsharp_app_release" />
+      <BuildType Solution="mzkit_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="mzkit|*" Project="Debug" />
+      <BuildType Solution="NPSearch|*" Project="Rsharp_app_release" />
+      <BuildType Solution="PlantMAT|*" Project="Rsharp_app_release" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/renv/">
     <Project Path="../../GCModeller/src/R-sharp/Library/shares/JsonHelper/JsonHelper.shproj" Id="b2ae1422-d7da-4053-a386-eb2ea9326d68" />

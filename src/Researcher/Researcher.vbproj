@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\..\GCModeller\src\runtime\sciBASIC#\Microsoft.VisualBasic.Core\src\Core.vbproj" />
     <ProjectReference Include="..\..\..\GCModeller\src\runtime\sciBASIC#\mime\text%markdown\markdown.NET5.vbproj" />
     <ProjectReference Include="..\..\..\graphQL\src\mysqli\LibMySQL\LibMySQL.vbproj" />
+    <ProjectReference Include="..\..\..\graphQL\src\pubmed\pubmed.vbproj" />
     <ProjectReference Include="..\Ollama\Ollama.vbproj" />
   </ItemGroup>
 
