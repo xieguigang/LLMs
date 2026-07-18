@@ -14,6 +14,7 @@
 
 Imports System.IO
 Imports System.Threading.Tasks
+Imports Ollama
 
 Public Class DemoUsage
 
@@ -25,7 +26,7 @@ Public Class DemoUsage
         Console.WriteLine()
 
         ' 1. Create the Ollama client (assumes the existing class)
-        Dim ollama As New Ollama()
+        Dim ollama As New Ollama.Ollama("")
 
         ' 2. Locate the skills folder. In a real app, this would come
         '    from configuration. Here we use a path relative to the
@@ -92,7 +93,7 @@ Public Class DemoUsage
     Public Shared Async Function RunLayerByLayerDemo() As Task
         Console.WriteLine("=== Layer-by-Layer Demo ===")
 
-        Dim ollama As New Ollama()
+        Dim ollama As New Ollama.Ollama("")
         Dim skillsDir As String = Path.Combine(Environment.CurrentDirectory, "skills")
         Dim agent As New SkillAgent(ollama, skillsDir)
 

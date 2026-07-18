@@ -1,5 +1,6 @@
 Imports System.IO
 Imports System.Text
+Imports Ollama.JSON.FunctionCall
 
 ''' <summary>
 ''' SkillAgent - the LLM-facing orchestrator that wires the three-layer
@@ -243,12 +244,12 @@ Public Class SkillAgent
         ' that actually runs when the LLM invokes this tool.
         _ollama.AddFunction(
             funcModel,
-            f:=Function(call)
-                   Dim skillName As String = call!skill_name?.ToString()
-                   Dim scriptName As String = call!script_name?.ToString()
+            f:=Function([call])
+                   Dim skillName As String = [call]!skill_name?.ToString()
+                   Dim scriptName As String = [call]!script_name?.ToString()
                    Dim args As String = ""
-                   If call!args IsNot Nothing Then
-                       args = call!args.ToString()
+                   If [call]!args IsNot Nothing Then
+                       args = [call]!args.ToString()
                    End If
 
                    If String.IsNullOrEmpty(skillName) OrElse String.IsNullOrEmpty(scriptName) Then
