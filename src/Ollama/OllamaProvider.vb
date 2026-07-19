@@ -169,4 +169,8 @@ Public Class OllamaProvider : Implements ILLMProvider
         Next
         Return result
     End Function
+
+    Public Shared Async Function Chat(prompt_text As String, url As String, model As String) As Task(Of LLMsResponse)
+        Return Await New LLMClient(New OllamaProvider(url), model).Chat(prompt_text)
+    End Function
 End Class

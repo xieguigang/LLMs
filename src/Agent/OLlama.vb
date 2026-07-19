@@ -32,11 +32,11 @@ Module OLlamaDemo
                            Optional ollama_server As String = "127.0.0.1:11434",
                            Optional max_memory_size As Integer = 1000,
                            Optional logfile As String = Nothing,
-                           Optional preserve_memory As Boolean = True) As Ollama.Ollama
+                           Optional preserve_memory As Boolean = True) As LLMClient
 
-        Return New Ollama.Ollama(model, ollama_server,
-                                 logfile:=logfile,
-                                 preserveMemory:=preserve_memory) With {
+        Dim ollama As New OllamaProvider(ollama_server)
+
+        Return New LLMClient(ollama, model, logfile:=logfile, preserveMemory:=preserve_memory) With {
             .max_memory_size = max_memory_size
         }
     End Function
@@ -47,7 +47,7 @@ Module OLlamaDemo
     ''' <param name="ollama"></param>
     ''' <returns></returns>
     <ExportAPI("setup_global_hook")>
-    Public Function setup_global_hook(ollama As Ollama.Ollama) As Object
+    Public Function setup_global_hook(ollama As LLMClient) As Object
         Call LLMs.HookOllama(
             chat:=Function(prompt)
                       Dim msg = ollama.Chat(prompt).GetAwaiter.GetResult
@@ -60,7 +60,7 @@ Module OLlamaDemo
     End Function
 
     <ExportAPI("get_modelinfo")>
-    Public Function get_modelinfo(ollama As Ollama.Ollama, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
+    Public Function get_modelinfo(ollama As LLMClient, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
         Dim json As JsonObject = ollama.GetModelInformation(timeout).GetAwaiter.GetResult
         Dim modelinfo = json.createRObj(env)
         Return modelinfo
@@ -73,7 +73,7 @@ Module OLlamaDemo
     ''' <param name="msg"></param>
     ''' <returns></returns>
     <ExportAPI("system_message")>
-    Public Function system_message(model As Ollama.Ollama,
+    Public Function system_message(model As LLMClient,
                                    <RByRefValueAssign>
                                    <RRawVectorArgument>
                                    msg As Object,
@@ -94,13 +94,13 @@ Module OLlamaDemo
     ''' <returns>
     ''' a tuple list that contains the LLMs result output:
     ''' 
-    ''' 1. output - the LLMs thinking and LLMs <see cref="OllamaResponse"/> message
+    ''' 1. output - the LLMs thinking and LLMs <see cref="LLMsResponse"/> message
     ''' 2. function_calls - the <see cref="FunctionCall"/> during the LLMs thinking
     ''' 
     ''' </returns>
     <ExportAPI("chat")>
     <RApiReturn("output", "function_calls")>
-    Public Function chat(model As Ollama.Ollama, prompt As String, Optional text_response As Boolean = True) As Object
+    Public Function chat(model As LLMClient, prompt As String, Optional text_response As Boolean = True) As Object
         Dim response = model.Chat(prompt).GetAwaiter.GetResult
 
         If text_response Then
@@ -114,7 +114,7 @@ Module OLlamaDemo
     End Function
 
     <ExportAPI("add_tool")>
-    Public Function add_tool(model As Ollama.Ollama, name$, desc$,
+    Public Function add_tool(model As LLMClient, name$, desc$,
                              <RRawVectorArgument>
                              requires As Object,
                              Optional args As list = Nothing,
@@ -188,9 +188,9 @@ Module OLlamaDemo
     <ExportAPI("deepseek_chat")>
     Public Function deepseek_chat(message As String,
                                   Optional ollama_serve As String = "127.0.0.1:11434",
-                                  Optional model As String = "deepseek-r1:671b") As OllamaResponse
+                                  Optional model As String = "deepseek-r1:671b") As LLMsResponse
 
-        Return OllamaResponse.Chat(message, ollama_serve, model)
+        Return OllamaProvider.Chat(message, ollama_serve, model).GetAwaiter.GetResult
     End Function
 
 End Module

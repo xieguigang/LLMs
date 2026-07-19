@@ -1,6 +1,6 @@
 ﻿Imports Ollama
 Imports Ollama.JSON.FunctionCall
-Imports OllamaServer = Ollama.Ollama
+Imports OllamaServer = Ollama.LLMClient
 
 Module Llamatest
 
@@ -10,15 +10,15 @@ Module Llamatest
         '  Dim test_parse = DeepSeekResponse.ParseResponse(DeepSeekResponse.who_are_you)
         '  Dim list As String() = "E:\HMM\test\stream.jsonl".ReadAllLines
 
-        Dim test_rag = Global.Ollama.OllamaResponse.Chat("为我介绍阿司匹林的药物性值，仅使用下面的json格式返回给我，方便我做自动化解析： {QED: ""value-place-holder"", CYP450:""value-place-holder""}",
-"127.0.0.1:8000", "deepseek-r1:8b")
+        Dim test_rag = OllamaProvider.Chat("为我介绍阿司匹林的药物性值，仅使用下面的json格式返回给我，方便我做自动化解析： {QED: ""value-place-holder"", CYP450:""value-place-holder""}",
+"127.0.0.1:8000", "deepseek-r1:8b").GetAwaiter.GetResult
 
 
         Pause()
 
         ' test deepseek
         ' deepseek-r1:32b
-        Dim result = Global.Ollama.OllamaResponse.Chat("who are you?", "127.0.0.1:11434", "qwen3:30b")
+        Dim result = OllamaProvider.Chat("who are you?", "127.0.0.1:11434", "qwen3:30b").GetAwaiter.GetResult
 
         Call Console.WriteLine(result.think)
         Call Console.WriteLine()
@@ -43,7 +43,7 @@ Module Llamatest
                 }
             }
         }
-        Dim ollama As New OllamaServer("qwen3:30b", "127.0.0.1:11434") With {
+        Dim ollama As New OllamaServer(New OllamaProvider("127.0.0.1:11434"), "qwen3:30b") With {
             .tools = New List(Of FunctionTool)(FunctionTool.CreateToolSet(tool_time)),
             .tool_invoke = AddressOf RunFunctionTool,
             .temperature = 0.99
