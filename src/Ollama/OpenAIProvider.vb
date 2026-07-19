@@ -88,20 +88,14 @@ Public Class OpenAIProvider : Implements ILLMProvider
 
                 ' 解析正文文本
                 If delta.HasObjectKey("content") AndAlso delta("content") IsNot Nothing Then
-                    Dim strVal As JsonValue = delta("content")
-
-                    If strVal.IsEmptyString Then
-                        chunk.DeltaContent = ""
-                    Else
-                        chunk.DeltaContent = strVal.GetStripString(decodeMetachar:=True)
-                    End If
+                    chunk.DeltaContent = GetString(delta("content"))
                 End If
 
                 ' 解析思考(reasoning)增量（o-series / DeepSeek 兼容接口）
                 If delta.HasObjectKey("reasoning_content") AndAlso delta("reasoning_content") IsNot Nothing Then
-                    chunk.ThinkContent = delta("reasoning_content").ToString()
+                    chunk.ThinkContent = GetString(delta("reasoning_content"))
                 ElseIf delta.HasObjectKey("think") AndAlso delta("think") IsNot Nothing Then
-                    chunk.ThinkContent = delta("think").ToString()
+                    chunk.ThinkContent = GetString ( delta("think"))
                 End If
 
                 ' 解析 Tool Calls 分片并按 index 拼装
@@ -115,18 +109,18 @@ Public Class OpenAIProvider : Implements ILLMProvider
                         End While
 
                         If tc.HasObjectKey("id") AndAlso tc("id") IsNot Nothing Then
-                            Dim idStr = tc("id").ToString()
+                            Dim idStr = GetString(tc("id"))
                             If Not String.IsNullOrEmpty(idStr) Then pending(idx).Id = idStr
                         End If
 
                         If tc.HasObjectKey("function") AndAlso tc("function") IsNot Nothing Then
                             Dim func As JsonObject = tc("function")
                             If func.HasObjectKey("name") AndAlso func("name") IsNot Nothing Then
-                                Dim nm = func("name").ToString()
+                                Dim nm = GetString(func("name"))
                                 If Not String.IsNullOrEmpty(nm) Then pending(idx).FunctionName &= nm
                             End If
                             If func.HasObjectKey("arguments") AndAlso func("arguments") IsNot Nothing Then
-                                Dim argStr = func("arguments").ToString()
+                                Dim argStr = GetString(func("arguments"))
                                 If Not String.IsNullOrEmpty(argStr) Then argsBuf(idx).Append(argStr)
                             End If
                         End If
@@ -136,6 +130,14 @@ Public Class OpenAIProvider : Implements ILLMProvider
                 Yield chunk
             End While
         End Using
+    End Function
+
+    Private Shared Function GetString(strval As JsonValue) As String
+        If strval.IsEmptyString Then
+            Return ""
+        Else
+            Return strval.GetStripString(decodeMetachar:=True)
+        End If
     End Function
 
     ''' <summary>
