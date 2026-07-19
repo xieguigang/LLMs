@@ -32,10 +32,6 @@ Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by Deep
         }
     End Function
 
-    Public Shared Function Chat(message As String, ollama_server As String, Optional model As String = "deepseek-r1:671b") As OllamaResponse
-        Return New Ollama(model, ollama_server).Chat(message).GetAwaiter.GetResult
-    End Function
-
     ''' <summary>
     ''' get output text
     ''' </summary>

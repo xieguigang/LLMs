@@ -57,5 +57,6 @@ End Class
 Public Class ChatResponseChunk
     Public Property IsDone As Boolean
     Public Property DeltaContent As String ' 流式增量文本
+    Public Property ThinkContent As String ' 流式思考(reasoning)增量，例如 Ollama/DeepSeek-R1 的 <think> 内容
     Public Property ToolCalls As List(Of ToolCallInfo) ' 如果本轮触发了工具
 End Class
