@@ -3,17 +3,15 @@ Imports System.Net.Http
 Imports System.Net.Http.Headers
 Imports System.Text
 Imports System.Threading
-Imports Microsoft.VisualBasic.Linq
-Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.VisualBasic.MIME.application.json
 Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON.FunctionCall
 
-Public Class OpenAIProvider
-    Implements ILLMProvider
+Public Class OpenAIProvider : Implements ILLMProvider
 
-    Private ReadOnly _baseUrl As String
-    Private ReadOnly _apiKey As String
+    ReadOnly _baseUrl As String
+    ReadOnly _apiKey As String
 
     Public Sub New(baseUrl As String, apiKey As String)
         _baseUrl = baseUrl

@@ -2,16 +2,15 @@
 Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
-Imports Microsoft.VisualBasic.Linq
-Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.VisualBasic.MIME.application.json
 Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
 
 ''' <summary>
 ''' 统一的大语言模型客户端：持有记忆、函数注册表与日志，调用任意 <see cref="ILLMProvider"/> 完成多轮对话与工具调用，
-''' 对外返回包含「思考(think)」与「正文(output)」的统一响应对象 <see cref="OllamaResponse"/>。
+''' 对外返回包含「思考(think)」与「正文(output)」的统一响应对象 <see cref="LLMsResponse"/>。
 ''' </summary>
 Public Class LLMClient : Implements IDisposable
 
@@ -86,7 +85,7 @@ Public Class LLMClient : Implements IDisposable
         Return msgs
     End Function
 
-    Public Async Function Chat(message As String, Optional cancellationToken As CancellationToken = Nothing) As Task(Of OllamaResponse)
+    Public Async Function Chat(message As String, Optional cancellationToken As CancellationToken = Nothing) As Task(Of LLMsResponse)
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = message}
 
         If preserveMemory Then
@@ -148,7 +147,7 @@ Public Class LLMClient : Implements IDisposable
                     ai_memory.Enqueue(finalAssistantMsg)
                     If ai_log IsNot Nothing Then ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
                 End If
-                Return New OllamaResponse With {
+                Return New LLMsResponse With {
                     .think = fullThink.ToString().Trim(),
                     .output = fullOutput.ToString().Trim()
                 }

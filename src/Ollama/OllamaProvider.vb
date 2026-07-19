@@ -2,13 +2,11 @@
 Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
-Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
 
-Public Class OllamaProvider
-    Implements ILLMProvider
+Public Class OllamaProvider : Implements ILLMProvider
 
     Private ReadOnly _server As String
 

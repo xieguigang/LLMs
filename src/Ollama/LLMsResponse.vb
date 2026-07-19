@@ -4,7 +4,7 @@ Imports ASCII = Microsoft.VisualBasic.Text.ASCII
 ''' <summary>
 ''' Ollama LLMs response output
 ''' </summary>
-Public Class OllamaResponse
+Public Class LLMsResponse
 
     ''' <summary>
     ''' the LLMs thinking
@@ -23,10 +23,10 @@ Public Class OllamaResponse
 
 Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by DeepSeek. I'm at your service and would be delighted to assist you with any inquiries or tasks you may have."
 
-    Public Shared Function ParseResponse(content_str As String) As OllamaResponse
+    Public Shared Function ParseResponse(content_str As String) As LLMsResponse
         Dim think_str As String = content_str.Match("[<]think[>].+[<]/think[>]", RegularExpressions.RegexOptions.Singleline)
         content_str = content_str.Substring(think_str.Length)
-        Return New OllamaResponse With {
+        Return New LLMsResponse With {
             .think = Strings.Trim(think_str.GetStackValue(">", "<").Trim(ASCII.CR, ASCII.LF, ASCII.TAB, " "c)),
             .output = Strings.Trim(Strings.Trim(content_str).Trim(ASCII.CR, ASCII.LF, ASCII.TAB, " "c))
         }
@@ -37,7 +37,7 @@ Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by Deep
     ''' </summary>
     ''' <param name="result"></param>
     ''' <returns></returns>
-    Public Shared Narrowing Operator CType(result As OllamaResponse) As String
+    Public Shared Narrowing Operator CType(result As LLMsResponse) As String
         If result Is Nothing Then
             Return Nothing
         Else
