@@ -10,7 +10,7 @@ Public Class OllamaProvider : Implements ILLMProvider
 
     Private ReadOnly _server As String
 
-    Public Sub New(server As String)
+    Public Sub New(Optional server As String = "127.0.0.1:11434")
         _server = server
     End Sub
 
