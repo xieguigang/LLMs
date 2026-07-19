@@ -13,16 +13,20 @@ Public Class OpenAIProvider : Implements ILLMProvider
     ReadOnly _baseUrl As String
     ReadOnly _apiKey As String
 
-    Public Sub New(baseUrl As String, apiKey As String)
-        _baseUrl = baseUrl
-        _apiKey = apiKey
-    End Sub
-
     Public ReadOnly Property ApiEndpoint As String Implements ILLMProvider.ApiEndpoint
         Get
             Return $"{_baseUrl}/v1/chat/completions"
         End Get
     End Property
+
+    Public Sub New(baseUrl As String, apiKey As String)
+        If Not (baseUrl.StartsWith("http://") OrElse baseUrl.StartsWith("https://")) Then
+            baseUrl = $"https://{baseUrl}"
+        End If
+
+        _baseUrl = baseUrl
+        _apiKey = apiKey
+    End Sub
 
     Public Async Function StreamChatAsync(options As ChatRequestOptions, cancellationToken As CancellationToken) As Task(Of IEnumerable(Of ChatResponseChunk)) Implements ILLMProvider.StreamChatAsync
         ' 1. 转换为 OpenAI 的请求体结构
