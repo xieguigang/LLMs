@@ -88,7 +88,13 @@ Public Class OpenAIProvider : Implements ILLMProvider
 
                 ' 解析正文文本
                 If delta.HasObjectKey("content") AndAlso delta("content") IsNot Nothing Then
-                    chunk.DeltaContent = delta("content").ToString()
+                    Dim strVal As JsonValue = delta("content")
+
+                    If strVal.IsEmptyString Then
+                        chunk.DeltaContent = ""
+                    Else
+                        chunk.DeltaContent = strVal.GetStripString(decodeMetachar:=True)
+                    End If
                 End If
 
                 ' 解析思考(reasoning)增量（o-series / DeepSeek 兼容接口）
