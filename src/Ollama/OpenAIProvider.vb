@@ -29,16 +29,17 @@ Public Class OpenAIProvider : Implements ILLMProvider
         Dim openaiReq As New Dictionary(Of String, Object) From {
             {"model", options.Model},
             {"stream", True},
-            {"messages", ConvertToOpenAIMessages(options.Messages)}
+            {"messages", ConvertToOpenAIMessages(options.Messages).ToArray}
         }
         If options.Temperature.HasValue Then openaiReq("temperature") = options.Temperature.Value
         If options.MaxTokens.HasValue Then openaiReq("max_tokens") = options.MaxTokens.Value
         If Not options.Tools.IsNullOrEmpty Then
-            openaiReq("tools") = ConvertToOpenAITools(options.Tools)
+            openaiReq("tools") = ConvertToOpenAITools(options.Tools).ToArray
         End If
 
         ' 2. 发送带 Auth 的 HTTP 请求
-        Dim json = openaiReq.GetJson(simpleDict:=True)
+        Dim json As String = JSONSerializer.GetJson(openaiReq, enumToStr:=True)
+
         Using request As New HttpRequestMessage(HttpMethod.Post, ApiEndpoint)
             request.Headers.Authorization = New AuthenticationHeaderValue("Bearer", _apiKey)
             request.Content = New StringContent(json, Encoding.UTF8, "application/json")
