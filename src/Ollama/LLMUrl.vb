@@ -12,6 +12,12 @@
         Dim t = url.GetTagValue(":", trim:=True, failureNoName:=True)
         Dim server As String = t.Value.Trim("/"c)
 
+        If Not apikey Is Nothing Then
+            If apikey.FileExists Then
+                apikey = apikey.ReadFirstLine.Trim
+            End If
+        End If
+
         Select Case t.Name.ToLower
             Case "openai"
                 Return New OpenAIProvider(server, apikey)
