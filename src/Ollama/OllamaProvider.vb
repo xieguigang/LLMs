@@ -2,6 +2,7 @@
 Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
+Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall

@@ -1,9 +1,13 @@
 ﻿Imports System.IO
 Imports System.Net.Http
+Imports System.Net.Http.Headers
 Imports System.Text
 Imports System.Threading
+Imports Microsoft.VisualBasic.Linq
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.VisualBasic.MIME.application.json
 Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Ollama.JSON.FunctionCall
 
 Public Class OpenAIProvider
     Implements ILLMProvider
@@ -24,19 +28,21 @@ Public Class OpenAIProvider
 
     Public Async Function StreamChatAsync(options As ChatRequestOptions, cancellationToken As CancellationToken) As Task(Of IEnumerable(Of ChatResponseChunk)) Implements ILLMProvider.StreamChatAsync
         ' 1. 转换为 OpenAI 的请求体结构
-        Dim openaiReq = New With {
-            .model = options.Model,
-            .stream = True,
-            .messages = ConvertToOpenAIMessages(options.Messages),
-            .tools = ConvertToOpenAITools(options.Tools),
-            .temperature = options.Temperature,
-            .max_tokens = options.MaxTokens
+        Dim openaiReq As New Dictionary(Of String, Object) From {
+            {"model", options.Model},
+            {"stream", True},
+            {"messages", ConvertToOpenAIMessages(options.Messages)}
         }
+        If options.Temperature.HasValue Then openaiReq("temperature") = options.Temperature.Value
+        If options.MaxTokens.HasValue Then openaiReq("max_tokens") = options.MaxTokens.Value
+        If Not options.Tools.IsNullOrEmpty Then
+            openaiReq("tools") = ConvertToOpenAITools(options.Tools)
+        End If
 
         ' 2. 发送带 Auth 的 HTTP 请求
-        Dim json = openaiReq.GetJson()
+        Dim json = openaiReq.GetJson(simpleDict:=True)
         Using request As New HttpRequestMessage(HttpMethod.Post, ApiEndpoint)
-            request.Headers.Authorization = New Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey)
+            request.Headers.Authorization = New AuthenticationHeaderValue("Bearer", _apiKey)
             request.Content = New StringContent(json, Encoding.UTF8, "application/json")
 
             Dim response = Await LLMClient.SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
@@ -50,6 +56,10 @@ Public Class OpenAIProvider
     Private Iterator Function ParseOpenAIStream(stream As Stream) As IEnumerable(Of ChatResponseChunk)
         Using reader As New StreamReader(stream)
             Dim line As String
+            ' OpenAI 的 tool_calls 以 index 分片流式下发，需要跨 chunk 拼装
+            Dim pending As New List(Of ToolCallInfo)
+            Dim argsBuf As New List(Of StringBuilder)
+
             While Not reader.EndOfStream
                 line = reader.ReadLine()
                 ' OpenAI 流式格式: "data: {...}"
@@ -57,7 +67,15 @@ Public Class OpenAIProvider
 
                 Dim data = line.Substring(6).Trim()
                 If data = "[DONE]" Then
-                    Yield New ChatResponseChunk With {.IsDone = True}
+                    Dim doneChunk As New ChatResponseChunk With {.IsDone = True}
+                    If pending.Count > 0 Then
+                        ' 在流结束时，将拼装好的参数 JSON 字符串解析为统一的 Dictionary
+                        For i As Integer = 0 To pending.Count - 1
+                            pending(i).FunctionArguments = ParseArguments(argsBuf(i).ToString())
+                        Next
+                        doneChunk.ToolCalls = pending
+                    End If
+                    Yield doneChunk
                     Exit While
                 End If
 
@@ -65,23 +83,44 @@ Public Class OpenAIProvider
                 Dim delta As JsonObject = DirectCast(DirectCast(result("choices"), JsonArray)(0), JsonObject)("delta")
                 Dim chunk As New ChatResponseChunk With {.IsDone = False}
 
-                ' 解析文本
+                ' 解析正文文本
                 If delta.HasObjectKey("content") AndAlso delta("content") IsNot Nothing Then
                     chunk.DeltaContent = delta("content").ToString()
                 End If
 
-                ' 解析 Tool Calls (OpenAI 的 tool_calls 在 delta 里是数组片段，需要拼装)
+                ' 解析思考(reasoning)增量（o-series / DeepSeek 兼容接口）
+                If delta.HasObjectKey("reasoning_content") AndAlso delta("reasoning_content") IsNot Nothing Then
+                    chunk.ThinkContent = delta("reasoning_content").ToString()
+                ElseIf delta.HasObjectKey("think") AndAlso delta("think") IsNot Nothing Then
+                    chunk.ThinkContent = delta("think").ToString()
+                End If
+
+                ' 解析 Tool Calls 分片并按 index 拼装
                 If delta.HasObjectKey("tool_calls") Then
-                    chunk.ToolCalls = New List(Of ToolCallInfo)
                     Dim tcArray As JsonArray = delta("tool_calls")
                     For Each tc As JsonObject In tcArray
-                        Dim func As JsonObject = tc("function")
+                        Dim idx As Integer = If(tc.HasObjectKey("index") AndAlso tc("index") IsNot Nothing, Integer.Parse(tc("index").ToString()), pending.Count)
+                        While pending.Count <= idx
+                            pending.Add(New ToolCallInfo With {.FunctionArguments = New Dictionary(Of String, String)})
+                            argsBuf.Add(New StringBuilder())
+                        End While
 
-                        chunk.ToolCalls.Add(New ToolCallInfo With {
-                            .Id = tc("id")?.ToString(),
-                            .FunctionName = func("name")?.ToString(),
-                            .FunctionArguments = func("arguments")?.CreateObject(Of Dictionary(Of String, String))
-                        })
+                        If tc.HasObjectKey("id") AndAlso tc("id") IsNot Nothing Then
+                            Dim idStr = tc("id").ToString()
+                            If Not String.IsNullOrEmpty(idStr) Then pending(idx).Id = idStr
+                        End If
+
+                        If tc.HasObjectKey("function") AndAlso tc("function") IsNot Nothing Then
+                            Dim func As JsonObject = tc("function")
+                            If func.HasObjectKey("name") AndAlso func("name") IsNot Nothing Then
+                                Dim nm = func("name").ToString()
+                                If Not String.IsNullOrEmpty(nm) Then pending(idx).FunctionName &= nm
+                            End If
+                            If func.HasObjectKey("arguments") AndAlso func("arguments") IsNot Nothing Then
+                                Dim argStr = func("arguments").ToString()
+                                If Not String.IsNullOrEmpty(argStr) Then argsBuf(idx).Append(argStr)
+                            End If
+                        End If
                     Next
                 End If
 
@@ -90,5 +129,98 @@ Public Class OpenAIProvider
         End Using
     End Function
 
-    ' ... ConvertToOpenAIMessages 和 ConvertToOpenAITools 的映射逻辑 ...
+    ''' <summary>
+    ''' 将拼装后的参数 JSON 字符串解析为统一的 Dictionary(Of String, String)
+    ''' </summary>
+    Private Shared Function ParseArguments(jsonStr As String) As Dictionary(Of String, String)
+        If String.IsNullOrWhiteSpace(jsonStr) Then Return New Dictionary(Of String, String)
+        Try
+            Dim dict = jsonStr.LoadJSON(Of Dictionary(Of String, String))
+            If dict Is Nothing Then Return New Dictionary(Of String, String)
+            Return dict
+        Catch
+            Return New Dictionary(Of String, String)
+        End Try
+    End Function
+
+    Private Function ConvertToOpenAIMessages(messages As List(Of ChatMessage)) As List(Of Dictionary(Of String, Object))
+        Dim list As New List(Of Dictionary(Of String, Object))
+        If messages Is Nothing Then Return list
+
+        For Each m In messages
+            If m Is Nothing Then Continue For
+
+            If Not m.ToolCalls.IsNullOrEmpty Then
+                ' assistant 消息，带有 tool_calls（历史中的工具调用）
+                Dim tcs As New List(Of Dictionary(Of String, Object))
+                For Each tc In m.ToolCalls
+                    Dim argsJson As String = If(tc.FunctionArguments.IsNullOrEmpty, "{}", tc.FunctionArguments.GetJson(simpleDict:=True))
+                    tcs.Add(New Dictionary(Of String, Object) From {
+                        {"id", If(String.IsNullOrEmpty(tc.Id), Guid.NewGuid().ToString("N"), tc.Id)},
+                        {"type", "function"},
+                        {"function", New Dictionary(Of String, Object) From {
+                            {"name", tc.FunctionName},
+                            {"arguments", argsJson}
+                        }}
+                    })
+                Next
+                list.Add(New Dictionary(Of String, Object) From {
+                    {"role", "assistant"},
+                    {"content", If(m.Content, "")},
+                    {"tool_calls", tcs}
+                })
+            ElseIf m.Role = "tool" Then
+                list.Add(New Dictionary(Of String, Object) From {
+                    {"role", "tool"},
+                    {"tool_call_id", m.ToolCallId},
+                    {"content", m.Content}
+                })
+            Else
+                list.Add(New Dictionary(Of String, Object) From {
+                    {"role", m.Role},
+                    {"content", m.Content}
+                })
+            End If
+        Next
+        Return list
+    End Function
+
+    Private Function ConvertToOpenAITools(tools As List(Of FunctionTool)) As List(Of Dictionary(Of String, Object))
+        Dim list As New List(Of Dictionary(Of String, Object))
+        If tools Is Nothing Then Return list
+
+        For Each t In tools
+            Dim fn = t.function
+            Dim paramObj As New Dictionary(Of String, Object) From {
+                {"type", If(fn.parameters?.type, "object")}
+            }
+
+            If fn.parameters IsNot Nothing AndAlso Not fn.parameters.properties.IsNullOrEmpty Then
+                Dim props As New Dictionary(Of String, Object)
+                For Each kvp In fn.parameters.properties
+                    props(kvp.Key) = New Dictionary(Of String, Object) From {
+                        {"type", If(kvp.Value.type, "string")},
+                        {"description", kvp.Value.description}
+                    }
+                Next
+                paramObj("properties") = props
+            Else
+                paramObj("properties") = New Dictionary(Of String, Object)()
+            End If
+
+            If fn.parameters IsNot Nothing AndAlso Not fn.parameters.required.IsNullOrEmpty Then
+                paramObj("required") = fn.parameters.required
+            End If
+
+            list.Add(New Dictionary(Of String, Object) From {
+                {"type", If(t.type, "function")},
+                {"function", New Dictionary(Of String, Object) From {
+                    {"name", fn.name},
+                    {"description", fn.description},
+                    {"parameters", paramObj}
+                }}
+            })
+        Next
+        Return list
+    End Function
 End Class

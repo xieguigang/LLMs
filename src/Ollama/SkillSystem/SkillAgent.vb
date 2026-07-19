@@ -22,7 +22,7 @@ Imports Ollama.JSON.FunctionCall
 ''' </summary>
 Public Class SkillAgent
 
-    Private ReadOnly _ollama As Ollama
+    Private ReadOnly _ollama As LLMClient
     Private ReadOnly _manager As SkillManager
     Private ReadOnly _toolRegistered As Boolean = False
 
@@ -31,9 +31,9 @@ Public Class SkillAgent
     ''' scanning immediately so that subsequent RunTask calls do not
     ''' pay the scanning cost.
     ''' </summary>
-    ''' <param name="ollama">A configured Ollama client instance.</param>
+    ''' <param name="ollama">A configured unified LLM client instance (e.g. LLMClient + OllamaProvider).</param>
     ''' <param name="skillsBaseDir">Absolute path to the skills root folder.</param>
-    Public Sub New(ollama As Ollama, skillsBaseDir As String)
+    Public Sub New(ollama As LLMClient, skillsBaseDir As String)
         If ollama Is Nothing Then
             Throw New ArgumentNullException(NameOf(ollama))
         End If
@@ -44,7 +44,7 @@ Public Class SkillAgent
         Dim count As Integer = _manager.ScanSkills()
         System.Diagnostics.Debug.WriteLine($"SkillAgent: scanned {count} skill(s) from {skillsBaseDir}")
 
-        ' Register the Layer 3 script-execution tool with the Ollama client.
+        ' Register the Layer 3 script-execution tool with the unified LLM client.
         ' This makes "execute_skill_script" available to the LLM as a
         ' function-call tool for the lifetime of this agent.
         RegisterScriptExecutionTool()
@@ -205,8 +205,8 @@ Public Class SkillAgent
     ' =========================================================================
 
     ''' <summary>
-    ''' Register the "execute_skill_script" function tool with the Ollama
-    ''' client. This is the bridge that lets the LLM trigger Layer 3
+    ''' Register the "execute_skill_script" function tool with the unified
+    ''' LLM client. This is the bridge that lets the LLM trigger Layer 3
     ''' resource loading during skill execution.
     ''' 
     ''' The tool takes three parameters:

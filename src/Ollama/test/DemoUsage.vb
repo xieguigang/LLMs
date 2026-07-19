@@ -26,7 +26,7 @@ Public Class DemoUsage
         Console.WriteLine()
 
         ' 1. Create the Ollama client (assumes the existing class)
-        Dim ollama As New Ollama.Ollama("")
+        Dim ollama As New LLMClient(New OllamaProvider(""), "deepseek-r1:671b")
 
         ' 2. Locate the skills folder. In a real app, this would come
         '    from configuration. Here we use a path relative to the
@@ -93,7 +93,7 @@ Public Class DemoUsage
     Public Shared Async Function RunLayerByLayerDemo() As Task
         Console.WriteLine("=== Layer-by-Layer Demo ===")
 
-        Dim ollama As New Ollama.Ollama("")
+        Dim ollama As New LLMClient(New OllamaProvider(""), "deepseek-r1:671b")
         Dim skillsDir As String = Path.Combine(Environment.CurrentDirectory, "skills")
         Dim agent As New SkillAgent(ollama, skillsDir)
 
