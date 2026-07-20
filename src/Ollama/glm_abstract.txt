@@ -1,3 +1,5 @@
+目前我使用vb.net语言编写了一个基于本地安装的Ollama大语言模型服务提供LLMs大语言模型接入能力的模块，在这个模块中有下面的公开函数可以被其他的程序模块代码进行调用：
+
 Public Class LLMClient : Implements IDisposable
 
     ''' <summary>
@@ -77,3 +79,7 @@ Public Class LLMsResponse
     Public Property output As String
 	
 End Class
+
+在这里展示的三个公开函数，分别实现了外部程序代码通过这个模块与Ollama的LLMs模型进行对话，AddFunction实现了将vb.net函数注册到大语言模型会话中，从而实现能够让大语言模型进行函数调用，让大语言模型获取得到本地文件读取，调用本地命令行工具等额外的能力。
+
+目前我想要基于这里的这个模块作为基础，需要你开发一个
