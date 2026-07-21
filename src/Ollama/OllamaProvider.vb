@@ -2,7 +2,7 @@
 Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
-Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Microsoft.VisualBasic.MIME.application.json
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -181,14 +181,14 @@ Public Class OllamaProvider : Implements ILLMProvider
     Public Async Function GetModelInformation(model As String, timeout As Double, verbose As Boolean) As Task(Of ModelInfo) Implements ILLMProvider.GetModelInformation
         Dim req As New RequestShowModelInformation With {.model = model, .verbose = verbose}
         Dim showUrl As String = ApiEndpoint.Replace("/api/chat", "/api/show")
-        Dim json_input As String = req.GetJson(maskReadonly:=True)
+        Dim json_input As String = JSONSerializer.GetJson(req, enumToStr:=True)
         Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
 
         Using source = New Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeout))
             Dim response = Await LLMClient.SharedHttpClient.PostAsync(showUrl, content, source.Token)
             response.EnsureSuccessStatusCode()
             Dim respText = Await response.Content.ReadAsStringAsync()
-            Dim raw = JsonParser.Parse(respText)
+            Dim raw As JsonObject = JsonParser.Parse(respText)
 
             Dim info As New ModelInfo With {
                 .Provider = "ollama",

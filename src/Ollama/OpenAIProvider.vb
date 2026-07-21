@@ -249,7 +249,7 @@ Public Class OpenAIProvider : Implements ILLMProvider
                 Dim response = Await LLMClient.SharedHttpClient.SendAsync(request, source.Token)
                 response.EnsureSuccessStatusCode()
                 Dim respText = Await response.Content.ReadAsStringAsync()
-                Dim raw = JsonParser.Parse(respText)
+                Dim raw As JsonObject = JsonParser.Parse(respText)
 
                 Dim info As New ModelInfo With {
                     .Provider = "openai",
