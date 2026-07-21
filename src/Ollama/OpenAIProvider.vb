@@ -234,4 +234,41 @@ Public Class OpenAIProvider : Implements ILLMProvider
         Next
         Return list
     End Function
+
+    ''' <summary>
+    ''' 获取模型信息：向 OpenAI 的 GET /v1/models/{model} 发起请求（携带 Bearer 鉴权），并映射为统一的 <see cref="ModelInfo"/>
+    ''' </summary>
+    Public Async Function GetModelInformation(model As String, timeout As Double, verbose As Boolean) As Task(Of ModelInfo) Implements ILLMProvider.GetModelInformation
+        ' ApiEndpoint 形如 {base}/v1/chat/completions，推导为 {base}/v1/models/{model}
+        Dim modelsUrl As String = ApiEndpoint.Replace("/v1/chat/completions", "/v1/models/") & model
+
+        Using request As New HttpRequestMessage(HttpMethod.Get, modelsUrl)
+            request.Headers.Authorization = New AuthenticationHeaderValue("Bearer", _apiKey)
+
+            Using source = New Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeout))
+                Dim response = Await LLMClient.SharedHttpClient.SendAsync(request, source.Token)
+                response.EnsureSuccessStatusCode()
+                Dim respText = Await response.Content.ReadAsStringAsync()
+                Dim raw = JsonParser.Parse(respText)
+
+                Dim info As New ModelInfo With {
+                    .Provider = "openai",
+                    .Raw = raw
+                }
+
+                If raw.HasObjectKey("id") AndAlso raw("id") IsNot Nothing Then info.Id = GetString(raw("id"))
+                If raw.HasObjectKey("owned_by") AndAlso raw("owned_by") IsNot Nothing Then info.OwnedBy = GetString(raw("owned_by"))
+
+                ' created 为 Unix 秒时间戳
+                If raw.HasObjectKey("created") AndAlso raw("created") IsNot Nothing Then
+                    Dim createdLong As Long
+                    If Long.TryParse(GetString(raw("created")), createdLong) Then
+                        info.CreatedAt = createdLong
+                    End If
+                End If
+
+                Return info
+            End Using
+        End Using
+    End Function
 End Class

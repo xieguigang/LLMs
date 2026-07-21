@@ -2,6 +2,7 @@
 Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -172,5 +173,58 @@ Public Class OllamaProvider : Implements ILLMProvider
 
     Public Shared Async Function Chat(prompt_text As String, url As String, model As String) As Task(Of LLMsResponse)
         Return Await New LLMClient(New OllamaProvider(url), model).Chat(prompt_text)
+    End Function
+
+    ''' <summary>
+    ''' 获取模型信息：向 Ollama 的 /api/show 发起 POST 请求，并映射为统一的 <see cref="ModelInfo"/>
+    ''' </summary>
+    Public Async Function GetModelInformation(model As String, timeout As Double, verbose As Boolean) As Task(Of ModelInfo) Implements ILLMProvider.GetModelInformation
+        Dim req As New RequestShowModelInformation With {.model = model, .verbose = verbose}
+        Dim showUrl As String = ApiEndpoint.Replace("/api/chat", "/api/show")
+        Dim json_input As String = req.GetJson(maskReadonly:=True)
+        Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
+
+        Using source = New Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeout))
+            Dim response = Await LLMClient.SharedHttpClient.PostAsync(showUrl, content, source.Token)
+            response.EnsureSuccessStatusCode()
+            Dim respText = Await response.Content.ReadAsStringAsync()
+            Dim raw = JsonParser.Parse(respText)
+
+            Dim info As New ModelInfo With {
+                .Provider = "ollama",
+                .Id = GetStr(raw, "model"),
+                .Raw = raw
+            }
+
+            ' modified_at (ISO 字符串) -> CreatedAt (Unix 秒)
+            Dim modifiedAt = GetStr(raw, "modified_at")
+            If Not String.IsNullOrEmpty(modifiedAt) Then
+                Dim dto As DateTimeOffset
+                If DateTimeOffset.TryParse(modifiedAt, dto) Then
+                    info.CreatedAt = dto.ToUnixTimeSeconds()
+                End If
+            End If
+
+            ' 解析 details 子对象（family / parameter_size / quantization_level / format）
+            If raw.HasObjectKey("details") AndAlso raw("details") IsNot Nothing Then
+                Dim details = DirectCast(raw("details"), JsonObject)
+                info.Family = GetStr(details, "family")
+                info.ParameterSize = GetStr(details, "parameter_size")
+                info.QuantizationLevel = GetStr(details, "quantization_level")
+                info.Format = GetStr(details, "format")
+            End If
+
+            Return info
+        End Using
+    End Function
+
+    ''' <summary>
+    ''' 从 JsonObject 中安全读取字符串字段（缺失或为空时返回空字符串）
+    ''' </summary>
+    Private Shared Function GetStr(obj As JsonObject, key As String) As String
+        If obj Is Nothing OrElse Not obj.HasObjectKey(key) OrElse obj(key) Is Nothing Then Return ""
+        Dim v = obj(key)
+        If v.IsEmptyString Then Return ""
+        Return v.GetStripString(decodeMetachar:=True)
     End Function
 End Class

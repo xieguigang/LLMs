@@ -275,24 +275,13 @@ Public Class LLMClient : Implements IDisposable
     End Sub
 
     ''' <summary>
-    ''' 获取模型信息（仅对 Ollama 后端有效；其它后端返回 Nothing）
+    ''' 获取当前模型的归一化信息：委托给底层 Provider 实现，自动兼容 Ollama / OpenAI 等后端。
     ''' </summary>
-    Public Async Function GetModelInformation(Optional timeout As Double = 1, Optional verbose As Boolean = True) As Task(Of JsonObject)
-        If Not (TypeOf _provider Is OllamaProvider) Then
-            Return Nothing
-        End If
-
-        Dim req As New RequestShowModelInformation With {.model = _model, .verbose = verbose}
-        Dim showUrl As String = _provider.ApiEndpoint.Replace("/api/chat", "/api/show")
-        Dim json_input As String = req.GetJson(maskReadonly:=True)
-        Dim content = New StringContent(json_input, Encoding.UTF8, "application/json")
-
-        Using source = New Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeout))
-            Dim response = Await SharedHttpClient.PostAsync(showUrl, content, source.Token)
-            response.EnsureSuccessStatusCode()
-            Dim respText = Await response.Content.ReadAsStringAsync()
-            Return JsonParser.Parse(respText)
-        End Using
+    ''' <param name="timeout">请求超时（秒）</param>
+    ''' <param name="verbose">是否返回详细信息（Ollama 有效，OpenAI 忽略）</param>
+    ''' <returns>归一化后的 <see cref="ModelInfo"/>；请求失败则向上抛出异常</returns>
+    Public Async Function GetModelInformation(Optional timeout As Double = 1, Optional verbose As Boolean = True) As Task(Of ModelInfo)
+        Return Await _provider.GetModelInformation(_model, timeout, verbose)
     End Function
 
     Protected Overridable Sub Dispose(disposing As Boolean)

@@ -1,4 +1,5 @@
 ﻿Imports System.Threading
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Ollama.JSON.FunctionCall
 
 ''' <summary>
@@ -18,8 +19,40 @@ Public Interface ILLMProvider
     ''' <returns> yield 返回一个个 Chunk </returns>
     Function StreamChatAsync(options As ChatRequestOptions, cancellationToken As CancellationToken) As Task(Of IEnumerable(Of ChatResponseChunk))
 
-    ' 未来可扩展：非流式请求、获取模型列表等
+    ''' <summary>
+    ''' 获取指定模型的归一化信息（由各后端 Provider 实现差异）
+    ''' </summary>
+    ''' <param name="model">模型名称/标识</param>
+    ''' <param name="timeout">请求超时（秒）</param>
+    ''' <param name="verbose">是否返回详细信息（Ollama 有效，OpenAI 忽略）</param>
+    ''' <returns>归一化后的 <see cref="ModelInfo"/></returns>
+    Function GetModelInformation(model As String, timeout As Double, verbose As Boolean) As Task(Of ModelInfo)
 End Interface
+
+''' <summary>
+''' 归一化后的模型信息：将 Ollama / OpenAI 等不同后端的模型信息映射为统一结构，
+''' 调用方无需关心底层后端；同时保留 <see cref="Raw"/> 原始响应以供深入解析。
+''' </summary>
+Public Class ModelInfo
+    ''' <summary>模型标识（Ollama: model；OpenAI: id）</summary>
+    Public Property Id As String
+    ''' <summary>后端来源："ollama" / "openai"</summary>
+    Public Property Provider As String
+    ''' <summary>模型族（Ollama: details.family）</summary>
+    Public Property Family As String
+    ''' <summary>参数规模（Ollama: details.parameter_size）</summary>
+    Public Property ParameterSize As String
+    ''' <summary>量化等级（Ollama: details.quantization_level）</summary>
+    Public Property QuantizationLevel As String
+    ''' <summary>格式（Ollama: details.format）</summary>
+    Public Property Format As String
+    ''' <summary>拥有者（OpenAI: owned_by）</summary>
+    Public Property OwnedBy As String
+    ''' <summary>创建/修改时间戳（Unix 秒；OpenAI: created，Ollama: modified_at 转换）</summary>
+    Public Property CreatedAt As Long?
+    ''' <summary>后端原始响应，供调用方深入解析</summary>
+    Public Property Raw As JsonObject
+End Class
 
 ''' <summary>
 ''' 统一的聊天消息模型
