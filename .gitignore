@@ -240,3 +240,4 @@ _Pvt_Extensions
 .fake/
 .pkg/LLMs.zip
 .Rproj.user
+src/Ollama/build_log.txt
