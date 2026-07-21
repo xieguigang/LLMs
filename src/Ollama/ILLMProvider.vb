@@ -1,5 +1,6 @@
 ﻿Imports System.Threading
 Imports Microsoft.VisualBasic.MIME.application.json
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Ollama.JSON.FunctionCall
 
 ''' <summary>
