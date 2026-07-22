@@ -7,6 +7,10 @@ Public Class FunctionCaller
     ReadOnly registry As New Dictionary(Of String, Func(Of FunctionCall, String))
     ReadOnly verbose As Boolean = True
 
+    Sub New(Optional verbose As Boolean = True)
+        Me.verbose = verbose
+    End Sub
+
     <MethodImpl(MethodImplOptions.AggressiveInlining)>
     Public Function GetCaller() As Func(Of FunctionCall, String)
         Return AddressOf Caller
