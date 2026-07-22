@@ -45,7 +45,10 @@ Public Class LLMClient : Implements IDisposable
         .UseProxy = False
     }) With {.Timeout = TimeSpan.FromHours(1)}
 
-    Sub New(provider As ILLMProvider, model As String, Optional logfile As String = Nothing, Optional preserveMemory As Boolean = True)
+    Sub New(provider As ILLMProvider, model As String,
+            Optional logfile As String = Nothing,
+            Optional preserveMemory As Boolean = True)
+
         _provider = provider
         _model = model
         Me.preserveMemory = preserveMemory
@@ -93,7 +96,7 @@ Public Class LLMClient : Implements IDisposable
     ''' the LLMs response output text data, includes <see cref="LLMsResponse.think"/> text and 
     ''' the real LLMs content <see cref="LLMsResponse.output"/>.
     ''' </returns>
-    Public Async Function Chat(prompt_text As String, Optional cancellationToken As CancellationToken = Nothing) As Task(Of LLMsResponse)
+    Public Async Function Chat(prompt_text As String, Optional cancellationToken As CancellationToken = Nothing, Optional maxRounds As Integer = 15) As Task(Of LLMsResponse)
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = prompt_text}
 
         If preserveMemory Then
@@ -111,14 +114,13 @@ Public Class LLMClient : Implements IDisposable
             .Tools = Me.tools,
             .Temperature = Me.temperature
         }
-
-        ' 循环处理：如果模型返回 Tool Calls，执行后继续请求，直到返回最终文本
-        Dim maxRounds As Integer = 10
         Dim currentReq As ChatRequestOptions = reqOptions
         Dim fullThink As New StringBuilder
         Dim fullOutput As New StringBuilder
         Dim llmResponse As LLMsResponse
 
+        ' 循环处理：如果模型返回 Tool Calls，执行后继续请求，直到返回最终文本
+        ' 在这个for循环中用来处理工具函数调用，以及由于网络失败或者文本解析错误导致的重试
         For round As Integer = 1 To maxRounds
             Try
                 llmResponse = Nothing
@@ -173,7 +175,7 @@ Public Class LLMClient : Implements IDisposable
 
         fullThink.Append(thinkBuf.ToString())
         fullOutput.Append(outBuf.ToString())
-re0:
+
         ' 3. 如果没有工具调用，直接返回结果
         If toolCallsToExecute.IsNullOrEmpty Then
             ' 20260723
@@ -212,11 +214,15 @@ re0:
 
                 If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
                     toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
-                    GoTo re0
+                    GoTo exec
                 End If
             End If
 
-            Dim finalAssistantMsg As New ChatMessage With {.Role = "assistant", .Content = outBuf.ToString()}
+            Dim finalAssistantMsg As New ChatMessage With {
+                .Role = "assistant",
+                .Content = outBuf.ToString()
+            }
+
             If preserveMemory Then
                 ai_memory.Enqueue(finalAssistantMsg)
                 If ai_log IsNot Nothing Then
@@ -228,7 +234,7 @@ re0:
                 .output = fullOutput.ToString().Trim()
             }
         End If
-
+exec:
         ' 4. 如果有工具调用，执行并追加历史记录
         Dim assistantMsg As New ChatMessage With {
             .Role = "assistant",
@@ -243,16 +249,21 @@ re0:
         ' 逐个执行工具
         For Each tc As ToolCallInfo In toolCallsToExecute
             Dim fval As String = ExecuteTool(tc)
-            ai_calls.Add(New FunctionCall With {.name = tc.FunctionName, .arguments = tc.FunctionArguments})
-
             Dim toolMsg As New ChatMessage With {
                 .Role = "tool",
                 .ToolCallId = tc.Id,
                 .Content = fval
             }
+
+            Call ai_calls.Add(New FunctionCall With {
+                .name = tc.FunctionName,
+                .arguments = tc.FunctionArguments
+            })
+
             If preserveMemory Then
                 ai_memory.Enqueue(toolMsg)
             End If
+
             currentReq.Messages.Add(toolMsg)
         Next
 
