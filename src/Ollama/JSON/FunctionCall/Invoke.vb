@@ -32,6 +32,12 @@ Namespace JSON.FunctionCall
             End Get
         End Property
 
+        Default Public ReadOnly Property Item(i As Integer) As String
+            Get
+                Return arguments(arguments.Keys(i))
+            End Get
+        End Property
+
         Public Function has(name As String) As Boolean
             If arguments.IsNullOrEmpty Then
                 Return False

@@ -75,17 +75,24 @@ Module CLRFunction
 
         ReadOnly obj As Object
         ReadOnly handle As MethodInfo
+        ReadOnly pars As ParameterInfo()
+        ReadOnly singleRequired As Boolean
 
         Sub New(obj As Object, handle As MethodInfo)
+            Me.pars = handle.GetParameters
             Me.obj = obj
             Me.handle = handle
+
+            singleRequired = pars.Length = 1 OrElse pars.Where(Function(p) Not p.IsOptional).Count = 1
         End Sub
 
         Public Function Invoke(args As FunctionCall) As String
-            Dim pars As ParameterInfo() = handle.GetParameters
             Dim argVals As Object() = New Object(pars.Length - 1) {}
 
-            If (Not args.strict) AndAlso argVals.Length = 1 AndAlso handle.GetParameters.Length = 1 Then
+            ' 20260723 mis-matched parameter name maybe generated via LLMs tools function call
+            ' set parameter value directly by offset in un-strict mode
+            ' andalso if the target function only required one parameter
+            If (Not args.strict) AndAlso singleRequired Then
                 argVals(Scan0) = TryCastValue(args(0), handle.GetParameters.First)
             Else
                 For i As Integer = 0 To argVals.Length - 1
