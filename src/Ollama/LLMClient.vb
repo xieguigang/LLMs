@@ -114,127 +114,149 @@ Public Class LLMClient : Implements IDisposable
 
         ' 循环处理：如果模型返回 Tool Calls，执行后继续请求，直到返回最终文本
         Dim maxRounds As Integer = 10
-        Dim currentReq = reqOptions
+        Dim currentReq As ChatRequestOptions = reqOptions
         Dim fullThink As New StringBuilder
         Dim fullOutput As New StringBuilder
+        Dim llmResponse As LLMsResponse
 
-        For round = 1 To maxRounds
-            Dim thinkBuf As New StringBuilder
-            Dim outBuf As New StringBuilder
-            Dim toolCallsToExecute As New List(Of ToolCallInfo)
+        For round As Integer = 1 To maxRounds
+            Try
+                llmResponse = Nothing
+                llmResponse = Await ChatRound(currentReq, cancellationToken, fullThink, fullOutput)
+            Catch ex As Exception
+                ' 20260723 network error will retry in next round
+                llmResponse = Nothing
 
-            ' 1. 通过 Provider 拉取流式数据
-            Dim chunks = Await _provider.StreamChatAsync(currentReq, cancellationToken)
+                Call App.LogException(ex)
+                Call ex.Message.warning
+            End Try
 
-            ' 2. 处理流式响应
-            For Each chunk In chunks
-                If Not String.IsNullOrEmpty(chunk.ThinkContent) Then
-                    Console.Write(chunk.ThinkContent)
-                    thinkBuf.Append(chunk.ThinkContent)
-                End If
-                If Not String.IsNullOrEmpty(chunk.DeltaContent) Then
-                    Console.Write(chunk.DeltaContent)
-                    outBuf.Append(chunk.DeltaContent)
-                End If
-
-                ' 收集 Tool Calls
-                If chunk.ToolCalls IsNot Nothing Then
-                    toolCallsToExecute.AddRange(chunk.ToolCalls)
-                End If
-
-                If chunk.IsDone Then Exit For
-            Next
-
-            fullThink.Append(thinkBuf.ToString())
-            fullOutput.Append(outBuf.ToString())
-re0:
-            ' 3. 如果没有工具调用，直接返回结果
-            If toolCallsToExecute.IsNullOrEmpty Then
-                ' 20260723
-                ' parse tool call information from output
-                ' <｜｜DSML｜｜tool_calls>
-                ' <｜｜DSML｜｜invoke name="peek_file">
-                ' <｜｜DSML｜｜parameter name="path" string="true">F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv</｜｜DSML｜｜parameter>
-                ' <｜｜DSML｜｜parameter name="limit" string="false">5</｜｜DSML｜｜parameter>
-                ' </｜｜DSML｜｜invoke>
-                ' <｜｜DSML｜｜invoke name="execute_r">
-                ' <｜｜DSML｜｜parameter name="r_script" string="true"># Quick check of expression data dimensions and value rangesexpr <- read.csv("F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv", row.names=1, check.names=FALSE)
-                ' cat("Dimensions:", nrow(expr), "x", ncol(expr), "\n")
-                ' cat("Column names:", paste(colnames(expr), collapse=", "), "\n")
-                ' cat("First3 rows:\n")
-                ' print(head(expr[,1:8],3))
-                ' cat("\nValue range: min =", min(expr, na.rm=TRUE), ", max =", max(expr, na.rm=TRUE), "\n")
-                ' cat("NA count:", sum(is.na(expr)), "\n")
-                ' cat("Zero count:", sum(expr==0, na.rm=TRUE), "\n")
-                ' cat("\nRow sums (first5):\n")
-                ' print(head(rowSums(expr, na.rm=TRUE),5))
-                ' cat("\nColumn sums (first5):\n")
-                ' print(head(colSums(expr, na.rm=TRUE),5))
-                ' cat("\nPer-row min positive values (first5):\n")
-                ' min_pos <- apply(expr,1, function(x) min(x[x>0], na.rm=TRUE))
-                ' print(head(min_pos))
-                ' </｜｜DSML｜｜parameter>
-                ' </｜｜DSML｜｜invoke>
-                ' </｜｜DSML｜｜tool_calls>
-                If outBuf.Length > 0 Then
-                    Dim firstLine As String, lastLine As String
-
-                    With outBuf.ToString.LineTokens
-                        firstLine = .First
-                        lastLine = .Last
-                    End With
-
-                    If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
-                        toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
-                        GoTo re0
-                    End If
-                End If
-
-                Dim finalAssistantMsg As New ChatMessage With {.Role = "assistant", .Content = outBuf.ToString()}
-                If preserveMemory Then
-                    ai_memory.Enqueue(finalAssistantMsg)
-                    If ai_log IsNot Nothing Then
-                        ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
-                    End If
-                End If
-                Return New LLMsResponse With {
-                    .think = fullThink.ToString().Trim(),
-                    .output = fullOutput.ToString().Trim()
-                }
+            If Not llmResponse Is Nothing Then
+                Return llmResponse
+            Else
+                ' 5. 准备下一轮请求 (带上工具结果)
+                ' 通常第二轮不需要再传 tools 定义
+                currentReq.Tools = Nothing
             End If
-
-            ' 4. 如果有工具调用，执行并追加历史记录
-            Dim assistantMsg As New ChatMessage With {
-                .Role = "assistant",
-                .Content = outBuf.ToString(),
-                .ToolCalls = toolCallsToExecute
-            }
-            If preserveMemory Then
-                ai_memory.Enqueue(assistantMsg)
-            End If
-            currentReq.Messages.Add(assistantMsg)
-
-            ' 逐个执行工具
-            For Each tc As ToolCallInfo In toolCallsToExecute
-                Dim fval As String = ExecuteTool(tc)
-                ai_calls.Add(New FunctionCall With {.name = tc.FunctionName, .arguments = tc.FunctionArguments})
-
-                Dim toolMsg As New ChatMessage With {
-                    .Role = "tool",
-                    .ToolCallId = tc.Id,
-                    .Content = fval
-                }
-                If preserveMemory Then
-                    ai_memory.Enqueue(toolMsg)
-                End If
-                currentReq.Messages.Add(toolMsg)
-            Next
-
-            ' 5. 准备下一轮请求 (带上工具结果)
-            currentReq.Tools = Nothing ' 通常第二轮不需要再传 tools 定义
         Next
 
         Throw New Exception("Exceeded max tool call rounds")
+    End Function
+
+    Private Async Function ChatRound(currentReq As ChatRequestOptions, cancellationToken As CancellationToken, fullThink As StringBuilder, fullOutput As StringBuilder) As Task(Of LLMsResponse)
+        Dim thinkBuf As New StringBuilder
+        Dim outBuf As New StringBuilder
+        Dim toolCallsToExecute As New List(Of ToolCallInfo)
+        ' 1. 通过 Provider 拉取流式数据
+        Dim chunks As IEnumerable(Of ChatResponseChunk) = Await _provider.StreamChatAsync(currentReq, cancellationToken)
+
+        ' 2. 处理流式响应
+        For Each chunk In chunks
+            If Not String.IsNullOrEmpty(chunk.ThinkContent) Then
+                Console.Write(chunk.ThinkContent)
+                thinkBuf.Append(chunk.ThinkContent)
+            End If
+            If Not String.IsNullOrEmpty(chunk.DeltaContent) Then
+                Console.Write(chunk.DeltaContent)
+                outBuf.Append(chunk.DeltaContent)
+            End If
+
+            ' 收集 Tool Calls
+            If chunk.ToolCalls IsNot Nothing Then
+                toolCallsToExecute.AddRange(chunk.ToolCalls)
+            End If
+
+            If chunk.IsDone Then
+                Exit For
+            End If
+        Next
+
+        fullThink.Append(thinkBuf.ToString())
+        fullOutput.Append(outBuf.ToString())
+re0:
+        ' 3. 如果没有工具调用，直接返回结果
+        If toolCallsToExecute.IsNullOrEmpty Then
+            ' 20260723
+            ' parse tool call information from output
+            ' <｜｜DSML｜｜tool_calls>
+            ' <｜｜DSML｜｜invoke name="peek_file">
+            ' <｜｜DSML｜｜parameter name="path" string="true">F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv</｜｜DSML｜｜parameter>
+            ' <｜｜DSML｜｜parameter name="limit" string="false">5</｜｜DSML｜｜parameter>
+            ' </｜｜DSML｜｜invoke>
+            ' <｜｜DSML｜｜invoke name="execute_r">
+            ' <｜｜DSML｜｜parameter name="r_script" string="true"># Quick check of expression data dimensions and value rangesexpr <- read.csv("F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv", row.names=1, check.names=FALSE)
+            ' cat("Dimensions:", nrow(expr), "x", ncol(expr), "\n")
+            ' cat("Column names:", paste(colnames(expr), collapse=", "), "\n")
+            ' cat("First3 rows:\n")
+            ' print(head(expr[,1:8],3))
+            ' cat("\nValue range: min =", min(expr, na.rm=TRUE), ", max =", max(expr, na.rm=TRUE), "\n")
+            ' cat("NA count:", sum(is.na(expr)), "\n")
+            ' cat("Zero count:", sum(expr==0, na.rm=TRUE), "\n")
+            ' cat("\nRow sums (first5):\n")
+            ' print(head(rowSums(expr, na.rm=TRUE),5))
+            ' cat("\nColumn sums (first5):\n")
+            ' print(head(colSums(expr, na.rm=TRUE),5))
+            ' cat("\nPer-row min positive values (first5):\n")
+            ' min_pos <- apply(expr,1, function(x) min(x[x>0], na.rm=TRUE))
+            ' print(head(min_pos))
+            ' </｜｜DSML｜｜parameter>
+            ' </｜｜DSML｜｜invoke>
+            ' </｜｜DSML｜｜tool_calls>
+            If outBuf.Length > 0 Then
+                Dim firstLine As String, lastLine As String
+
+                With outBuf.ToString.LineTokens
+                    firstLine = .First
+                    lastLine = .Last
+                End With
+
+                If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
+                    toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
+                    GoTo re0
+                End If
+            End If
+
+            Dim finalAssistantMsg As New ChatMessage With {.Role = "assistant", .Content = outBuf.ToString()}
+            If preserveMemory Then
+                ai_memory.Enqueue(finalAssistantMsg)
+                If ai_log IsNot Nothing Then
+                    ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
+                End If
+            End If
+            Return New LLMsResponse With {
+                .think = fullThink.ToString().Trim(),
+                .output = fullOutput.ToString().Trim()
+            }
+        End If
+
+        ' 4. 如果有工具调用，执行并追加历史记录
+        Dim assistantMsg As New ChatMessage With {
+            .Role = "assistant",
+            .Content = outBuf.ToString(),
+            .ToolCalls = toolCallsToExecute
+        }
+        If preserveMemory Then
+            ai_memory.Enqueue(assistantMsg)
+        End If
+        currentReq.Messages.Add(assistantMsg)
+
+        ' 逐个执行工具
+        For Each tc As ToolCallInfo In toolCallsToExecute
+            Dim fval As String = ExecuteTool(tc)
+            ai_calls.Add(New FunctionCall With {.name = tc.FunctionName, .arguments = tc.FunctionArguments})
+
+            Dim toolMsg As New ChatMessage With {
+                .Role = "tool",
+                .ToolCallId = tc.Id,
+                .Content = fval
+            }
+            If preserveMemory Then
+                ai_memory.Enqueue(toolMsg)
+            End If
+            currentReq.Messages.Add(toolMsg)
+        Next
+
+        Return Nothing
     End Function
 
     ''' <summary>
