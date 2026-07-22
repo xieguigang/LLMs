@@ -171,7 +171,7 @@ Public Class LLMClient : Implements IDisposable
             currentReq.Messages.Add(assistantMsg)
 
             ' 逐个执行工具
-            For Each tc In toolCallsToExecute
+            For Each tc As ToolCallInfo In toolCallsToExecute
                 Dim fval As String = ExecuteTool(tc)
                 ai_calls.Add(New FunctionCall With {.name = tc.FunctionName, .arguments = tc.FunctionArguments})
 
