@@ -26,11 +26,10 @@ Module CLRFunction
         Dim args As ArgumentAttribute() = handle.GetCustomAttributes(Of ArgumentAttribute).ToArray
         Dim func As String
         Dim export As ExportAPIAttribute = handle.GetCustomAttribute(Of ExportAPIAttribute)
-        Dim requires As IEnumerable(Of String) =
-            From a As ArgumentAttribute
-            In args
-            Where Not a.Optional
-            Select a.Name
+        Dim requires As IEnumerable(Of String) = From a As ArgumentAttribute
+                                                 In args
+                                                 Where Not a.Optional
+                                                 Select a.Name
 
         If export Is Nothing OrElse export.Name.StringEmpty Then
             func = handle.Name
