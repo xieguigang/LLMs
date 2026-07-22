@@ -65,6 +65,8 @@ Public Class LLMClient : Implements IDisposable
             IO.Path.Combine(IO.Path.GetTempPath(), "ollama_log_" & Guid.NewGuid().ToString("N") & ".jsonl"),
             logfile)
 
+        Call temp_logfile.ParentPath.MakeDir
+
         _provider = provider
         _model = model
         _maxRounds = maxRound
