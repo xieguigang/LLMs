@@ -19,7 +19,7 @@ Public Class LLMClient : Implements IDisposable
     ReadOnly _preserveMemory As Boolean = True
 
     Dim ai_memory As New Queue(Of ChatMessage)
-    Dim ai_caller As New FunctionCaller
+    Dim ai_caller As FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
 
@@ -59,7 +59,8 @@ Public Class LLMClient : Implements IDisposable
     Sub New(provider As ILLMProvider, model As String,
             Optional logfile As String = Nothing,
             Optional preserveMemory As Boolean = True,
-            Optional maxRound As Integer = 15)
+            Optional maxRound As Integer = 15,
+            Optional debug As Boolean = False)
 
         Dim temp_logfile As String = If(String.IsNullOrEmpty(logfile),
             IO.Path.Combine(IO.Path.GetTempPath(), "ollama_log_" & Guid.NewGuid().ToString("N") & ".jsonl"),
@@ -72,6 +73,7 @@ Public Class LLMClient : Implements IDisposable
         _maxRounds = maxRound
         _preserveMemory = preserveMemory
 
+        Me.ai_caller = New FunctionCaller(verbose:=debug)
         Me.ai_log = New StreamWriter(temp_logfile, append:=False)
     End Sub
 
