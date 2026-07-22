@@ -63,6 +63,10 @@ Public Class ChatMessage
     Public Property Content As String
     Public Property ToolCalls As List(Of ToolCallInfo) ' 仅当 Role=assistant 且触发工具时使用
     Public Property ToolCallId As String ' 仅当 Role=tool 时使用
+
+    Public Overrides Function ToString() As String
+        Return Content
+    End Function
 End Class
 
 ''' <summary>

@@ -147,13 +147,55 @@ Public Class LLMClient : Implements IDisposable
 
             fullThink.Append(thinkBuf.ToString())
             fullOutput.Append(outBuf.ToString())
-
+re0:
             ' 3. 如果没有工具调用，直接返回结果
             If toolCallsToExecute.IsNullOrEmpty Then
+                ' 20260723
+                ' parse tool call information from output
+                ' <｜｜DSML｜｜tool_calls>
+                ' <｜｜DSML｜｜invoke name="peek_file">
+                ' <｜｜DSML｜｜parameter name="path" string="true">F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv</｜｜DSML｜｜parameter>
+                ' <｜｜DSML｜｜parameter name="limit" string="false">5</｜｜DSML｜｜parameter>
+                ' </｜｜DSML｜｜invoke>
+                ' <｜｜DSML｜｜invoke name="execute_r">
+                ' <｜｜DSML｜｜parameter name="r_script" string="true"># Quick check of expression data dimensions and value rangesexpr <- read.csv("F:/datapool/2026.7.6-energy/FWMS20256511-human_cell_pellet/agent_test/expression.csv", row.names=1, check.names=FALSE)
+                ' cat("Dimensions:", nrow(expr), "x", ncol(expr), "\n")
+                ' cat("Column names:", paste(colnames(expr), collapse=", "), "\n")
+                ' cat("First3 rows:\n")
+                ' print(head(expr[,1:8],3))
+                ' cat("\nValue range: min =", min(expr, na.rm=TRUE), ", max =", max(expr, na.rm=TRUE), "\n")
+                ' cat("NA count:", sum(is.na(expr)), "\n")
+                ' cat("Zero count:", sum(expr==0, na.rm=TRUE), "\n")
+                ' cat("\nRow sums (first5):\n")
+                ' print(head(rowSums(expr, na.rm=TRUE),5))
+                ' cat("\nColumn sums (first5):\n")
+                ' print(head(colSums(expr, na.rm=TRUE),5))
+                ' cat("\nPer-row min positive values (first5):\n")
+                ' min_pos <- apply(expr,1, function(x) min(x[x>0], na.rm=TRUE))
+                ' print(head(min_pos))
+                ' </｜｜DSML｜｜parameter>
+                ' </｜｜DSML｜｜invoke>
+                ' </｜｜DSML｜｜tool_calls>
+                If outBuf.Length > 0 Then
+                    Dim firstLine As String, lastLine As String
+
+                    With outBuf.ToString.LineTokens
+                        firstLine = .First
+                        lastLine = .Last
+                    End With
+
+                    If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
+                        toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
+                        GoTo re0
+                    End If
+                End If
+
                 Dim finalAssistantMsg As New ChatMessage With {.Role = "assistant", .Content = outBuf.ToString()}
                 If preserveMemory Then
                     ai_memory.Enqueue(finalAssistantMsg)
-                    If ai_log IsNot Nothing Then ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
+                    If ai_log IsNot Nothing Then
+                        ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
+                    End If
                 End If
                 Return New LLMsResponse With {
                     .think = fullThink.ToString().Trim(),
@@ -167,7 +209,9 @@ Public Class LLMClient : Implements IDisposable
                 .Content = outBuf.ToString(),
                 .ToolCalls = toolCallsToExecute
             }
-            If preserveMemory Then ai_memory.Enqueue(assistantMsg)
+            If preserveMemory Then
+                ai_memory.Enqueue(assistantMsg)
+            End If
             currentReq.Messages.Add(assistantMsg)
 
             ' 逐个执行工具
@@ -180,7 +224,9 @@ Public Class LLMClient : Implements IDisposable
                     .ToolCallId = tc.Id,
                     .Content = fval
                 }
-                If preserveMemory Then ai_memory.Enqueue(toolMsg)
+                If preserveMemory Then
+                    ai_memory.Enqueue(toolMsg)
+                End If
                 currentReq.Messages.Add(toolMsg)
             Next
 
