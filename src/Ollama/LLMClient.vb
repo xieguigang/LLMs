@@ -145,7 +145,7 @@ Public Class LLMClient : Implements IDisposable
             Else
                 ' 5. 准备下一轮请求 (带上工具结果)
                 ' 通常第二轮不需要再传 tools 定义
-                currentReq.Tools = Nothing
+                ' currentReq.Tools = Nothing
             End If
         Next
 
@@ -158,6 +158,7 @@ Public Class LLMClient : Implements IDisposable
         Dim toolCallsToExecute As New List(Of ToolCallInfo)
         ' 1. 通过 Provider 拉取流式数据
         Dim chunks As IEnumerable(Of ChatResponseChunk) = Await _provider.StreamChatAsync(currentReq, cancellationToken)
+        Dim skipDeepSeekMLLeak As Boolean = True
 
         ' 2. 处理流式响应
         For Each chunk In chunks
@@ -220,7 +221,12 @@ Public Class LLMClient : Implements IDisposable
                 End With
 
                 If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
-                    toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
+                    If skipDeepSeekMLLeak Then
+                        Return Nothing
+                    Else
+                        toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
+                    End If
+
                     GoTo exec
                 End If
             End If
