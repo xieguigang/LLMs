@@ -26,10 +26,11 @@ Module CLRFunction
         Dim args As ArgumentAttribute() = handle.GetCustomAttributes(Of ArgumentAttribute).ToArray
         Dim func As String
         Dim export As ExportAPIAttribute = handle.GetCustomAttribute(Of ExportAPIAttribute)
-        Dim requires As IEnumerable(Of String) = From a As ArgumentAttribute
-                                                 In args
-                                                 Where Not a.Optional
-                                                 Select a.Name
+        Dim requires As IEnumerable(Of String) =
+            From a As ArgumentAttribute
+            In args
+            Where Not a.Optional
+            Select a.Name
 
         If export Is Nothing OrElse export.Name.StringEmpty Then
             func = handle.Name
@@ -58,36 +59,54 @@ Module CLRFunction
     End Function
 
     Public Function Caller(Of T)(obj As T, handle As MethodInfo) As Func(Of FunctionCall, String)
-        Return Function(a) Invoke(obj, handle, a)
+        Return AddressOf (New CLRCaller(obj, handle)).Invoke
     End Function
 
-    Private Function Invoke(obj As Object, handle As MethodInfo, args As FunctionCall) As String
-        Dim pars As ParameterInfo() = handle.GetParameters
-        Dim argVals As Object() = New Object(pars.Length - 1) {}
+    Private Function TryCastValue(val_str As String, p As ParameterInfo) As Object
+        Dim val_type As Type = p.ParameterType
 
-        For i As Integer = 0 To argVals.Length - 1
-            Dim name As String = pars(i).Name
-            Dim val As Object = pars(i).DefaultValue
+        If GetType(String) Is val_type Then
+            Return val_str
+        Else
+            Return any.CTypeDynamic(val_str, val_type)
+        End If
+    End Function
 
-            If args.has(name) Then
-                Dim val_str As String = args(name)
-                Dim val_type As Type = pars(i).ParameterType
+    Private Class CLRCaller
 
-                If GetType(String) Is val_type Then
-                    val = val_str
-                Else
-                    val = any.CTypeDynamic(val_str, val_type)
-                End If
-            ElseIf Not pars(i).IsOptional Then
-                Return $"error: call of the function '{args.name}' missing of the required parameter '{name}'!".GetJson
+        ReadOnly obj As Object
+        ReadOnly handle As MethodInfo
+
+        Sub New(obj As Object, handle As MethodInfo)
+            Me.obj = obj
+            Me.handle = handle
+        End Sub
+
+        Public Function Invoke(args As FunctionCall) As String
+            Dim pars As ParameterInfo() = handle.GetParameters
+            Dim argVals As Object() = New Object(pars.Length - 1) {}
+
+            If (Not args.strict) AndAlso argVals.Length = 1 AndAlso handle.GetParameters.Length = 1 Then
+                argVals(Scan0) = TryCastValue(args(0), handle.GetParameters.First)
+            Else
+                For i As Integer = 0 To argVals.Length - 1
+                    Dim name As String = pars(i).Name
+                    Dim val As Object = pars(i).DefaultValue
+
+                    If args.has(name) Then
+                        val = TryCastValue(args(name), pars(i))
+                    ElseIf Not pars(i).IsOptional Then
+                        Return $"error: call of the function '{args.name}' missing of the required parameter '{name}'!".GetJson
+                    End If
+
+                    argVals(i) = val
+                Next
             End If
 
-            argVals(i) = val
-        Next
+            Dim result As Object = handle.Invoke(obj, argVals)
+            Dim str As String = any.ToString(result)
 
-        Dim result As Object = handle.Invoke(obj, argVals)
-        Dim str As String = any.ToString(result)
-
-        Return str
-    End Function
+            Return str
+        End Function
+    End Class
 End Module

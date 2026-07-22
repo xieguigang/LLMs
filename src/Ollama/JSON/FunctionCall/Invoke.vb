@@ -24,6 +24,7 @@ Namespace JSON.FunctionCall
         Public Property index As Integer
         Public Property name As String
         Public Property arguments As Dictionary(Of String, String)
+        Public Property strict As Boolean = False
 
         Default Public ReadOnly Property Item(key As String) As String
             Get
