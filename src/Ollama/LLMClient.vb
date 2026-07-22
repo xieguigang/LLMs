@@ -3,7 +3,6 @@ Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
 Imports Microsoft.VisualBasic.MIME.application.json
-Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -14,14 +13,16 @@ Imports Ollama.JSON.FunctionCall
 ''' </summary>
 Public Class LLMClient : Implements IDisposable
 
-    Private ReadOnly _provider As ILLMProvider
-    Private ReadOnly _model As String
+    ReadOnly _provider As ILLMProvider
+    ReadOnly _model As String
+    ReadOnly _maxRounds As Integer = 15
+    ReadOnly _preserveMemory As Boolean = True
 
     Dim ai_memory As New Queue(Of ChatMessage)
     Dim ai_caller As New FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
-    Dim preserveMemory As Boolean = True
+
     Private disposedValue As Boolean
 
     Public Property temperature As Double = 0.1
@@ -45,17 +46,30 @@ Public Class LLMClient : Implements IDisposable
         .UseProxy = False
     }) With {.Timeout = TimeSpan.FromHours(1)}
 
+    ''' <summary>
+    ''' 
+    ''' </summary>
+    ''' <param name="provider"></param>
+    ''' <param name="model"></param>
+    ''' <param name="logfile"></param>
+    ''' <param name="preserveMemory"></param>
+    ''' <param name="maxRound">
+    ''' For LLM agent run a complex task, please increase this rounds number
+    ''' </param>
     Sub New(provider As ILLMProvider, model As String,
             Optional logfile As String = Nothing,
-            Optional preserveMemory As Boolean = True)
-
-        _provider = provider
-        _model = model
-        Me.preserveMemory = preserveMemory
+            Optional preserveMemory As Boolean = True,
+            Optional maxRound As Integer = 15)
 
         Dim temp_logfile As String = If(String.IsNullOrEmpty(logfile),
             IO.Path.Combine(IO.Path.GetTempPath(), "ollama_log_" & Guid.NewGuid().ToString("N") & ".jsonl"),
             logfile)
+
+        _provider = provider
+        _model = model
+        _maxRounds = maxRound
+        _preserveMemory = preserveMemory
+
         Me.ai_log = New StreamWriter(temp_logfile, append:=False)
     End Sub
 
@@ -103,10 +117,10 @@ Public Class LLMClient : Implements IDisposable
     ''' the LLMs response output text data, includes <see cref="LLMsResponse.think"/> text and 
     ''' the real LLMs content <see cref="LLMsResponse.output"/>.
     ''' </returns>
-    Public Async Function Chat(prompt_text As String, Optional cancellationToken As CancellationToken = Nothing, Optional maxRounds As Integer = 15) As Task(Of LLMsResponse)
+    Public Async Function Chat(prompt_text As String, Optional cancellationToken As CancellationToken = Nothing) As Task(Of LLMsResponse)
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = prompt_text}
 
-        If preserveMemory Then
+        If _preserveMemory Then
             ai_memory.Enqueue(newUserMsg)
             If ai_log IsNot Nothing Then ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
 
@@ -128,7 +142,7 @@ Public Class LLMClient : Implements IDisposable
 
         ' 循环处理：如果模型返回 Tool Calls，执行后继续请求，直到返回最终文本
         ' 在这个for循环中用来处理工具函数调用，以及由于网络失败或者文本解析错误导致的重试
-        For round As Integer = 1 To maxRounds
+        For round As Integer = 1 To _maxRounds
             Try
                 llmResponse = Nothing
                 llmResponse = Await ChatRound(currentReq, cancellationToken, fullThink, fullOutput)
@@ -236,7 +250,7 @@ Public Class LLMClient : Implements IDisposable
                 .Content = outBuf.ToString()
             }
 
-            If preserveMemory Then
+            If _preserveMemory Then
                 ai_memory.Enqueue(finalAssistantMsg)
                 If ai_log IsNot Nothing Then
                     ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
@@ -254,7 +268,7 @@ exec:
             .Content = outBuf.ToString(),
             .ToolCalls = toolCallsToExecute
         }
-        If preserveMemory Then
+        If _preserveMemory Then
             ai_memory.Enqueue(assistantMsg)
         End If
         currentReq.Messages.Add(assistantMsg)
@@ -273,7 +287,7 @@ exec:
                 .arguments = tc.FunctionArguments
             })
 
-            If preserveMemory Then
+            If _preserveMemory Then
                 ai_memory.Enqueue(toolMsg)
             End If
 
