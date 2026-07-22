@@ -64,6 +64,14 @@ Namespace JSON.FunctionCall
         Public Property type As String = "function"
         Public Property [function] As FunctionModel
 
+        Public Overrides Function ToString() As String
+            If [function] Is Nothing Then
+                Return "void()"
+            Else
+                Return $"{[function].name} - {[function].description}"
+            End If
+        End Function
+
         <MethodImpl(MethodImplOptions.AggressiveInlining)>
         Public Shared Function CreateToolSet(ParamArray f As FunctionModel()) As FunctionTool()
             Return (From fi As FunctionModel
