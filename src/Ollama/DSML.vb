@@ -1,7 +1,9 @@
 ﻿Imports System.Text.RegularExpressions
 Imports Microsoft.VisualBasic.Language
 
-' 3. 解析逻辑模块
+''' <summary>
+''' DeepSeek函数调用解析逻辑模块
+''' </summary>
 Public Module DsmlParser
 
     ''' <summary>
@@ -31,7 +33,8 @@ Public Module DsmlParser
                 Dim toolCall As New ToolCallInfo With {
                     .Id = ++id, ' 自动生成一个短ID
                     .FunctionName = m.Groups("funcName").Value,
-                    .FunctionArguments = New Dictionary(Of String, String)()
+                    .FunctionArguments = New Dictionary(Of String, String)(),
+                    .DeepSeekDSMLLeak = True
                 }
 
                 ' 2. 在 invoke 节点内部提取所有 parameter

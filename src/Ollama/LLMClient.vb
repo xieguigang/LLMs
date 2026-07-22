@@ -67,14 +67,21 @@ Public Class LLMClient : Implements IDisposable
             .name = calle.FunctionName,
             .arguments = calle.FunctionArguments
         }
+        Dim result_str As String
 
         If ai_caller.CheckFunction([call].name) Then
-            Return ai_caller.Call([call])
+            result_str = ai_caller.Call([call])
         ElseIf tool_invoke IsNot Nothing Then
-            Return tool_invoke([call])
+            result_str = tool_invoke([call])
         Else
-            Throw New InvalidProgramException($"the function '{[call].name}' is not registered and no external invoke engine is set!")
+            result_str = $"error: the tool function '{[call].name}' is not registered or no external function tool_call invoke engine was configured!"
         End If
+
+        If calle.DeepSeekDSMLLeak Then
+            result_str = $"<tool_result>{result_str}</tool_result>"
+        End If
+
+        Return result_str
     End Function
 
     ''' <summary>

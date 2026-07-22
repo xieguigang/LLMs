@@ -35,7 +35,8 @@ Public Class FunctionCaller
             Call VBDebugger.EchoLine($"[ollama]call: {arg.GetJson}")
         End If
 
-        Return registry(arg.name)(arg)
+        Dim result_str As String = registry(arg.name)(arg)
+        Return result_str
     End Function
 
     <MethodImpl(MethodImplOptions.AggressiveInlining)>

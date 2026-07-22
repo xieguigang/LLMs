@@ -76,6 +76,7 @@ Public Class ToolCallInfo
     Public Property Id As String
     Public Property FunctionName As String
     Public Property FunctionArguments As Dictionary(Of String, String)
+    Public Property DeepSeekDSMLLeak As Boolean
 
     Public Overrides Function ToString() As String
         Return $"[&{Id}] {FunctionName}({FunctionArguments.GetJson});"
