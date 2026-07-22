@@ -21,9 +21,33 @@ Module CLRFunction
     End Function
 
     <Extension>
+    Private Function GetArguments(handle As MethodInfo) As ArgumentAttribute()
+        Dim args As ArgumentAttribute() = handle.GetCustomAttributes(Of ArgumentAttribute).ToArray
+        Dim pars = handle.GetParameters
+
+        If args.IsNullOrEmpty AndAlso Not pars.IsNullOrEmpty Then
+            args = pars _
+                .Select(Function(p)
+                            Dim a = p.GetCustomAttribute(Of ArgumentAttribute)
+
+                            If a Is Nothing Then
+                                a = New ArgumentAttribute(p.Name, p.IsOptional)
+                            Else
+                                a.SetOptional(p.IsOptional)
+                            End If
+
+                            Return a
+                        End Function) _
+                .ToArray
+        End If
+
+        Return args
+    End Function
+
+    <Extension>
     Public Function GetMetadata(handle As MethodInfo) As FunctionModel
         Dim desc As DescriptionAttribute = handle.GetCustomAttribute(Of DescriptionAttribute)
-        Dim args As ArgumentAttribute() = handle.GetCustomAttributes(Of ArgumentAttribute).ToArray
+        Dim args As ArgumentAttribute() = handle.GetArguments
         Dim func As String
         Dim export As ExportAPIAttribute = handle.GetCustomAttribute(Of ExportAPIAttribute)
         Dim requires As IEnumerable(Of String) = From a As ArgumentAttribute
