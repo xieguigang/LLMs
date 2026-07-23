@@ -2,6 +2,7 @@
 Imports System.Reflection
 Imports System.Runtime.CompilerServices
 Imports Microsoft.VisualBasic.CommandLine.Reflection
+Imports Microsoft.VisualBasic.Scripting.Runtime
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON.FunctionCall
 Imports any = Microsoft.VisualBasic.Scripting
@@ -21,39 +22,55 @@ Module CLRFunction
     End Function
 
     <Extension>
-    Private Function GetArguments(handle As MethodInfo) As ArgumentAttribute()
+    Private Iterator Function GetArguments(handle As MethodInfo) As IEnumerable(Of ToolArgument)
         Dim args As ArgumentAttribute() = handle.GetCustomAttributes(Of ArgumentAttribute).ToArray
         Dim pars = handle.GetParameters
 
         If args.IsNullOrEmpty AndAlso Not pars.IsNullOrEmpty Then
-            args = pars _
-                .Select(Function(p)
-                            Dim a = p.GetCustomAttribute(Of ArgumentAttribute)
+            For Each p As ParameterInfo In pars
+                Dim a = p.GetCustomAttribute(Of ArgumentAttribute)
 
-                            If a Is Nothing Then
-                                a = New ArgumentAttribute(p.Name, p.IsOptional)
-                            Else
-                                a.SetOptional(p.IsOptional)
-                            End If
+                If a Is Nothing Then
+                    a = New ArgumentAttribute(p.Name, p.IsOptional)
+                Else
+                    a.SetOptional(p.IsOptional)
+                End If
 
-                            Return a
-                        End Function) _
-                .ToArray
+                Yield New ToolArgument With {
+                    .[default] = any.ToString(p.DefaultValue, null:="null"),
+                    .desc = a.Description,
+                    .name = a.Name,
+                    .type = p.ParameterType.PrimitiveTypeCode.Description.ToLower,
+                    .[optional] = p.IsOptional
+                }
+            Next
+        Else
+            Dim pIndex = pars.ToDictionary(Function(a) a.Name)
+
+            For Each a As ArgumentAttribute In args
+                Dim p As ParameterInfo = pIndex(a.Name)
+                Call a.SetOptional(p.IsOptional)
+                Yield New ToolArgument With {
+                    .[default] = any.ToString(p.DefaultValue, null:="null"),
+                    .desc = a.Description,
+                    .name = a.Name,
+                    .type = p.ParameterType.PrimitiveTypeCode.Description.ToLower,
+                    .[optional] = p.IsOptional
+                }
+            Next
         End If
-
-        Return args
     End Function
 
     <Extension>
     Public Function GetMetadata(handle As MethodInfo) As FunctionModel
         Dim desc As DescriptionAttribute = handle.GetCustomAttribute(Of DescriptionAttribute)
-        Dim args As ArgumentAttribute() = handle.GetArguments
+        Dim args As ToolArgument() = handle.GetArguments.ToArray
         Dim func As String
         Dim export As ExportAPIAttribute = handle.GetCustomAttribute(Of ExportAPIAttribute)
-        Dim requires As IEnumerable(Of String) = From a As ArgumentAttribute
+        Dim requires As IEnumerable(Of String) = From a As ToolArgument
                                                  In args
                                                  Where Not a.Optional
-                                                 Select a.Name
+                                                 Select a.name
 
         If export Is Nothing OrElse export.Name.StringEmpty Then
             func = handle.Name
@@ -66,11 +83,12 @@ Module CLRFunction
             .properties = New Dictionary(Of String, ParameterProperties)
         }
 
-        For Each arg As ArgumentAttribute In args
-            params(arg.Name) = New ParameterProperties With {
-                .name = arg.Name,
-                .description = arg.Description,
-                .type = arg.TokenType.Description.ToLower
+        For Each arg As ToolArgument In args
+            params(arg.name) = New ParameterProperties With {
+                .name = arg.name,
+                .description = arg.desc,
+                .type = arg.type,
+                .[default] = arg.default
             }
         Next
 

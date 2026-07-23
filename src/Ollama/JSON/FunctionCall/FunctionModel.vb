@@ -47,6 +47,7 @@ Namespace JSON.FunctionCall
         Public Property name As String
         Public Property description As String
         Public Property type As String = "string"
+        Public Property [default] As String
 
         Sub New()
         End Sub
