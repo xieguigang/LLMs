@@ -1,5 +1,4 @@
-﻿Imports System.IO
-Imports System.Net.Http
+﻿Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
 Imports Microsoft.VisualBasic.MIME.application.json
@@ -18,7 +17,7 @@ Public Class LLMClient : Implements IDisposable
     ReadOnly _maxRounds As Integer = 15
     ReadOnly _preserveMemory As Boolean = True
 
-    Dim _context As New ChatContextMemory
+    Dim _context As ChatContextMemory
     Dim _caller As FunctionCaller
     Dim _calls As New List(Of FunctionCall)
 
@@ -75,6 +74,7 @@ Public Class LLMClient : Implements IDisposable
         _maxRounds = maxRound
         _preserveMemory = preserveMemory
         _caller = New FunctionCaller(verbose:=debug)
+        _context = New ChatContextMemory(logfile)
     End Sub
 
     ''' <summary>
@@ -126,7 +126,6 @@ Public Class LLMClient : Implements IDisposable
 
         If _preserveMemory Then
             _context.Enqueue(newUserMsg)
-            If ai_log IsNot Nothing Then ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
         End If
 
         Dim reqOptions As New ChatRequestOptions With {
@@ -252,10 +251,8 @@ Public Class LLMClient : Implements IDisposable
 
             If _preserveMemory Then
                 _context.Enqueue(finalAssistantMsg)
-                If ai_log IsNot Nothing Then
-                    ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
-                End If
             End If
+
             Return New LLMsResponse With {
                 .think = fullThink.ToString().Trim(),
                 .output = fullOutput.ToString().Trim()
@@ -393,10 +390,7 @@ exec:
     Protected Overridable Sub Dispose(disposing As Boolean)
         If Not disposedValue Then
             If disposing Then
-                If ai_log IsNot Nothing Then
-                    Call ai_log.Flush()
-                    Call ai_log.Dispose()
-                End If
+                Call _context.Dispose()
             End If
 
             disposedValue = True

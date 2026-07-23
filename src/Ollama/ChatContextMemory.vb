@@ -1,5 +1,5 @@
-Imports System.Collections.Generic
 Imports System.IO
+Imports Microsoft.VisualBasic.Serialization.JSON
 
 ''' <summary>
 ''' 对话记忆上下文：将多轮 ChatMessage 维护为先进先出队列，并以近似算法估算 token 占用，
@@ -11,6 +11,7 @@ Imports System.IO
 ''' 与真实 BPE 分词存在偏差，仅用于历史裁剪，不影响实际发送给模型的请求。
 ''' </remarks>
 Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
+    Implements IDisposable
 
     ''' <summary>内部消息队列（先进先出）</summary>
     ReadOnly _queue As New Queue(Of ChatMessage)
@@ -18,6 +19,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
 
     ''' <summary>当前累计 token 估算（长整型以避免大上下文溢出）</summary>
     Dim _estimatedTokens As Long
+    Private disposedValue As Boolean
 
     ''' <summary>
     ''' 最大上下文 token 数量上限，默认 1,000,000（1M）。超过后从历史最旧端裁剪。
@@ -56,7 +58,11 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     ''' 入队一条消息：累加 token 估算并立即触发裁剪。
     ''' </summary>
     Public Sub Enqueue(msg As ChatMessage)
-        If msg Is Nothing Then Return
+        If msg Is Nothing Then
+            Return
+        ElseIf _log IsNot Nothing Then
+            Call _log.WriteLine(msg.GetJson(simpleDict:=True))
+        End If
 
         _queue.Enqueue(msg)
         _estimatedTokens += EstimateTokens(msg)
@@ -188,4 +194,33 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     Private Function GetEnumeratorNonGeneric() As System.Collections.IEnumerator Implements System.Collections.IEnumerable.GetEnumerator
         Return _queue.GetEnumerator()
     End Function
+
+    Protected Overridable Sub Dispose(disposing As Boolean)
+        If Not disposedValue Then
+            If disposing Then
+                ' TODO: dispose managed state (managed objects)
+                If _log IsNot Nothing Then
+                    Call _log.Flush()
+                    Call _log.Dispose()
+                End If
+            End If
+
+            ' TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            ' TODO: set large fields to null
+            disposedValue = True
+        End If
+    End Sub
+
+    ' ' TODO: override finalizer only if 'Dispose(disposing As Boolean)' has code to free unmanaged resources
+    ' Protected Overrides Sub Finalize()
+    '     ' Do not change this code. Put cleanup code in 'Dispose(disposing As Boolean)' method
+    '     Dispose(disposing:=False)
+    '     MyBase.Finalize()
+    ' End Sub
+
+    Public Sub Dispose() Implements IDisposable.Dispose
+        ' Do not change this code. Put cleanup code in 'Dispose(disposing As Boolean)' method
+        Dispose(disposing:=True)
+        GC.SuppressFinalize(Me)
+    End Sub
 End Class
