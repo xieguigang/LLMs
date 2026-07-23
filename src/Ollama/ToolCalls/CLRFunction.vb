@@ -40,7 +40,7 @@ Module CLRFunction
                     .[default] = any.ToString(p.DefaultValue, null:="null"),
                     .desc = a.Description,
                     .name = a.Name,
-                    .type = p.ParameterType.MakeTypeString,
+                    .type = p.ParameterType.MakeTypeString(p.DefaultValue),
                     .[optional] = p.IsOptional
                 }
             Next
@@ -54,7 +54,7 @@ Module CLRFunction
                     .[default] = any.ToString(p.DefaultValue, null:="null"),
                     .desc = a.Description,
                     .name = a.Name,
-                    .type = p.ParameterType.MakeTypeString,
+                    .type = p.ParameterType.MakeTypeString(p.DefaultValue),
                     .[optional] = p.IsOptional
                 }
             Next
@@ -62,7 +62,7 @@ Module CLRFunction
     End Function
 
     <Extension>
-    Private Function MakeTypeString(t As Type) As String
+    Private Function MakeTypeString(t As Type, [default] As Object) As String
         Select Case t
             Case GetType(String), GetType(Char) : Return "string"
             Case GetType(Double), GetType(Single), GetType(Decimal) : Return "number"
@@ -72,6 +72,8 @@ Module CLRFunction
             Case Else
                 If t.IsArray Then
                     Return "array"
+                ElseIf [default] Is Nothing Then
+                    Return "null"
                 Else
                     Return "object"
                 End If
