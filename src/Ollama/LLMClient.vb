@@ -18,7 +18,7 @@ Public Class LLMClient : Implements IDisposable
     ReadOnly _maxRounds As Integer = 15
     ReadOnly _preserveMemory As Boolean = True
 
-    Dim ai_memory As New Queue(Of ChatMessage)
+    Dim ai_memory As New ChatContextMemory
     Dim ai_caller As FunctionCaller
     Dim ai_log As TextWriter
     Dim ai_calls As New List(Of FunctionCall)
@@ -36,10 +36,19 @@ Public Class LLMClient : Implements IDisposable
     ''' 可选：外部工具执行引擎（当函数未在 ai_caller 中注册时使用）
     ''' </summary>
     Public Property tool_invoke As Func(Of FunctionCall, String)
+
     ''' <summary>
-    ''' 记忆队列的最大消息条数
+    ''' 记忆上下文的最大 Token 数量上限（近似估算），默认 1,000,000（1M）。超过后从历史最旧端裁剪。
+    ''' 裁剪逻辑由底层 <see cref="ChatContextMemory"/> 负责，并保证工具调用消息成组保留。
     ''' </summary>
-    Public Property max_memory_size As Integer = 100000
+    Public Property max_context_tokens As Integer
+        Get
+            Return CInt(ai_memory.MaxTokens)
+        End Get
+        Set(value As Integer)
+            ai_memory.MaxTokens = value
+        End Set
+    End Property
 
     Friend Shared ReadOnly SharedHttpClient As New HttpClient(New HttpClientHandler With {
         .Proxy = Nothing,
@@ -127,10 +136,6 @@ Public Class LLMClient : Implements IDisposable
         If _preserveMemory Then
             ai_memory.Enqueue(newUserMsg)
             If ai_log IsNot Nothing Then ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
-
-            While ai_memory.Count > max_memory_size
-                ai_memory.Dequeue()
-            End While
         End If
 
         Dim reqOptions As New ChatRequestOptions With {
