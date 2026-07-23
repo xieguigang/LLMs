@@ -1,4 +1,5 @@
-﻿Imports System.Text
+﻿Imports System.Runtime.CompilerServices
+Imports System.Text
 Imports System.Text.RegularExpressions
 Imports ASCII = Microsoft.VisualBasic.Text.ASCII
 
@@ -52,6 +53,8 @@ Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by Deep
     ''' <summary>
     ''' 从 LLM 响应中提取 JSON 内容。支持提取完整、截断/不完整的 JSON 数据。
     ''' </summary>
+    ''' 
+    <MethodImpl(MethodImplOptions.AggressiveInlining)>
     Public Function ExtractJsonFromResponse() As String
         Return LlmJsonExtractor.ExtractJsonFromLlmResponse(output)
     End Function
