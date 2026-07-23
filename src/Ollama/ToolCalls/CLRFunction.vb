@@ -40,7 +40,7 @@ Module CLRFunction
                     .[default] = any.ToString(p.DefaultValue, null:="null"),
                     .desc = a.Description,
                     .name = a.Name,
-                    .type = p.ParameterType.PrimitiveTypeCode.Description.ToLower,
+                    .type = p.ParameterType.MakeTypeString,
                     .[optional] = p.IsOptional
                 }
             Next
@@ -54,11 +54,28 @@ Module CLRFunction
                     .[default] = any.ToString(p.DefaultValue, null:="null"),
                     .desc = a.Description,
                     .name = a.Name,
-                    .type = p.ParameterType.PrimitiveTypeCode.Description.ToLower,
+                    .type = p.ParameterType.MakeTypeString,
                     .[optional] = p.IsOptional
                 }
             Next
         End If
+    End Function
+
+    <Extension>
+    Private Function MakeTypeString(t As Type) As String
+        Select Case t
+            Case GetType(String), GetType(Char) : Return "string"
+            Case GetType(Double), GetType(Single), GetType(Decimal) : Return "number"
+            Case GetType(Byte), GetType(SByte), GetType(Short), GetType(UShort), GetType(Integer), GetType(UInteger), GetType(Long), GetType(ULong)
+                Return "integer"
+            Case GetType(Boolean) : Return "boolean"
+            Case Else
+                If t.IsArray Then
+                    Return "array"
+                Else
+                    Return "object"
+                End If
+        End Select
     End Function
 
     <Extension>
@@ -69,7 +86,7 @@ Module CLRFunction
         Dim export As ExportAPIAttribute = handle.GetCustomAttribute(Of ExportAPIAttribute)
         Dim requires As IEnumerable(Of String) = From a As ToolArgument
                                                  In args
-                                                 Where Not a.Optional
+                                                 Where Not a.optional
                                                  Select a.name
 
         If export Is Nothing OrElse export.Name.StringEmpty Then
@@ -86,7 +103,7 @@ Module CLRFunction
         For Each arg As ToolArgument In args
             params(arg.name) = New ParameterProperties With {
                 .name = arg.name,
-                .description = arg.desc,
+                .description = arg.desc.TrimNewLine.Trim,
                 .type = arg.type,
                 .[default] = arg.default
             }
