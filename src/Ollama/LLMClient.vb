@@ -18,10 +18,9 @@ Public Class LLMClient : Implements IDisposable
     ReadOnly _maxRounds As Integer = 15
     ReadOnly _preserveMemory As Boolean = True
 
-    Dim ai_memory As New ChatContextMemory
-    Dim ai_caller As FunctionCaller
-    Dim ai_log As TextWriter
-    Dim ai_calls As New List(Of FunctionCall)
+    Dim _context As New ChatContextMemory
+    Dim _caller As FunctionCaller
+    Dim _calls As New List(Of FunctionCall)
 
     Private disposedValue As Boolean
 
@@ -43,10 +42,10 @@ Public Class LLMClient : Implements IDisposable
     ''' </summary>
     Public Property max_context_tokens As Integer
         Get
-            Return CInt(ai_memory.MaxTokens)
+            Return CInt(_context.MaxTokens)
         End Get
         Set(value As Integer)
-            ai_memory.MaxTokens = value
+            _context.MaxTokens = value
         End Set
     End Property
 
@@ -71,19 +70,11 @@ Public Class LLMClient : Implements IDisposable
             Optional maxRound As Integer = 15,
             Optional debug As Boolean = False)
 
-        Dim temp_logfile As String = If(String.IsNullOrEmpty(logfile),
-            IO.Path.Combine(IO.Path.GetTempPath(), "ollama_log_" & Guid.NewGuid().ToString("N") & ".jsonl"),
-            logfile)
-
-        Call temp_logfile.ParentPath.MakeDir
-
         _provider = provider
         _model = model
         _maxRounds = maxRound
         _preserveMemory = preserveMemory
-
-        Me.ai_caller = New FunctionCaller(verbose:=debug)
-        Me.ai_log = New StreamWriter(temp_logfile, append:=False)
+        _caller = New FunctionCaller(verbose:=debug)
     End Sub
 
     ''' <summary>
@@ -96,8 +87,8 @@ Public Class LLMClient : Implements IDisposable
         }
         Dim result_str As String
 
-        If ai_caller.CheckFunction([call].name) Then
-            result_str = ai_caller.Call([call])
+        If _caller.CheckFunction([call].name) Then
+            result_str = _caller.Call([call])
         ElseIf tool_invoke IsNot Nothing Then
             result_str = tool_invoke([call])
         Else
@@ -115,7 +106,7 @@ Public Class LLMClient : Implements IDisposable
     ''' 构造发送给 Provider 的消息列表：若首条不是 system 且设置了 system_message，则前置系统消息
     ''' </summary>
     Private Function BuildRequestMessages() As List(Of ChatMessage)
-        Dim msgs As New List(Of ChatMessage)(ai_memory)
+        Dim msgs As New List(Of ChatMessage)(_context)
         If (msgs.Count = 0 OrElse msgs(0).Role <> "system") AndAlso Not String.IsNullOrEmpty(system_message) Then
             msgs.Insert(0, New ChatMessage With {.Role = "system", .Content = system_message})
         End If
@@ -134,7 +125,7 @@ Public Class LLMClient : Implements IDisposable
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = prompt_text}
 
         If _preserveMemory Then
-            ai_memory.Enqueue(newUserMsg)
+            _context.Enqueue(newUserMsg)
             If ai_log IsNot Nothing Then ai_log.WriteLine(newUserMsg.GetJson(simpleDict:=True))
         End If
 
@@ -260,7 +251,7 @@ Public Class LLMClient : Implements IDisposable
             }
 
             If _preserveMemory Then
-                ai_memory.Enqueue(finalAssistantMsg)
+                _context.Enqueue(finalAssistantMsg)
                 If ai_log IsNot Nothing Then
                     ai_log.WriteLine(finalAssistantMsg.GetJson(simpleDict:=True))
                 End If
@@ -278,7 +269,7 @@ exec:
             .ToolCalls = toolCallsToExecute
         }
         If _preserveMemory Then
-            ai_memory.Enqueue(assistantMsg)
+            _context.Enqueue(assistantMsg)
         End If
         currentReq.Messages.Add(assistantMsg)
 
@@ -291,13 +282,13 @@ exec:
                 .Content = fval
             }
 
-            Call ai_calls.Add(New FunctionCall With {
+            Call _calls.Add(New FunctionCall With {
                 .name = tc.FunctionName,
                 .arguments = tc.FunctionArguments
             })
 
             If _preserveMemory Then
-                ai_memory.Enqueue(toolMsg)
+                _context.Enqueue(toolMsg)
             End If
 
             currentReq.Messages.Add(toolMsg)
@@ -310,8 +301,8 @@ exec:
     ''' get the function calls and then clear the function calls history temp cache list
     ''' </summary>
     Public Function GetLastFunctionCalls() As FunctionCall()
-        Dim calls = ai_calls.ToArray
-        ai_calls.Clear()
+        Dim calls = _calls.ToArray
+        _calls.Clear()
         Return calls
     End Function
 
@@ -345,7 +336,7 @@ exec:
         Call tools.Add(New FunctionTool With {.[function] = func})
 
         If Not f Is Nothing Then
-            Call ai_caller.Register(func.name, f)
+            Call _caller.Register(func.name, f)
         End If
     End Sub
 
@@ -381,7 +372,7 @@ exec:
     End Sub
 
     Public Function Clear() As LLMClient
-        Call ai_memory.Clear()
+        Call _context.Clear()
         Return Me
     End Function
 

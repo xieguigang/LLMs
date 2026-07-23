@@ -1,4 +1,5 @@
 Imports System.Collections.Generic
+Imports System.IO
 
 ''' <summary>
 ''' 对话记忆上下文：将多轮 ChatMessage 维护为先进先出队列，并以近似算法估算 token 占用，
@@ -12,9 +13,11 @@ Imports System.Collections.Generic
 Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
 
     ''' <summary>内部消息队列（先进先出）</summary>
-    Private _queue As New Queue(Of ChatMessage)
+    ReadOnly _queue As New Queue(Of ChatMessage)
+    ReadOnly _log As TextWriter
+
     ''' <summary>当前累计 token 估算（长整型以避免大上下文溢出）</summary>
-    Private _estimatedTokens As Long
+    Dim _estimatedTokens As Long
 
     ''' <summary>
     ''' 最大上下文 token 数量上限，默认 1,000,000（1M）。超过后从历史最旧端裁剪。
@@ -34,6 +37,20 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             Return _queue.Count
         End Get
     End Property
+
+    Sub New(Optional logfile As String = Nothing)
+        _log = New StreamWriter(GetLogFile(logfile), append:=False)
+    End Sub
+
+    Private Shared Function GetLogFile(logfile As String) As String
+        If logfile.StringEmpty(, True) Then
+            logfile = $"{IO.Path.GetTempPath()}/ollama-log_{Guid.NewGuid().ToString("N")}.jsonl"
+        End If
+
+        Call logfile.ParentPath.MakeDir
+
+        Return logfile
+    End Function
 
     ''' <summary>
     ''' 入队一条消息：累加 token 估算并立即触发裁剪。
@@ -102,7 +119,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
         End While
 
         ' 用剩余分组重建队列，并重新精确计算 token 总量
-        _queue = New Queue(Of ChatMessage)
+        _queue.Clear()
         _estimatedTokens = 0
         For g = removeGroups To groups.Count - 1
             For Each m In groups(g)
@@ -142,6 +159,10 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
         End If
 
         Return tokens
+    End Function
+
+    Public Overrides Function ToString() As String
+        Return $"LLM Context: {StringFormats.Lanudry(EstimatedTokens)} / {StringFormats.Lanudry(MaxTokens)}"
     End Function
 
     ''' <summary>
