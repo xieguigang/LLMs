@@ -72,7 +72,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
         Call Trim()
         Call Console.WriteLine()
         Call Console.WriteLine(Me.ToString)
-        Call Console.WriteLine($"Current Request Used: {StringFormats.Lanudry(req_size)}")
+        Call Console.WriteLine($"Current Request Tokens: {StringFormats.Lanudry(req_size)}")
         Call Console.WriteLine()
     End Sub
 
