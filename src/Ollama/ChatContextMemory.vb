@@ -66,7 +66,11 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
 
         _queue.Enqueue(msg)
         _estimatedTokens += EstimateTokens(msg)
-        Trim()
+
+        Call Trim()
+        Call Console.WriteLine()
+        Call Console.WriteLine(Me.ToString)
+        Call Console.WriteLine()
     End Sub
 
     ''' <summary>
