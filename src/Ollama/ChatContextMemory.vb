@@ -64,12 +64,15 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             Call _log.WriteLine(msg.GetJson(simpleDict:=True))
         End If
 
+        Dim req_size As Long = EstimateTokens(msg)
+
         _queue.Enqueue(msg)
-        _estimatedTokens += EstimateTokens(msg)
+        _estimatedTokens += req_size
 
         Call Trim()
         Call Console.WriteLine()
         Call Console.WriteLine(Me.ToString)
+        Call Console.WriteLine($"Current Request Used: {StringFormats.Lanudry(req_size)}")
         Call Console.WriteLine()
     End Sub
 
@@ -172,7 +175,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     End Function
 
     Public Overrides Function ToString() As String
-        Return $"LLM Context: {StringFormats.Lanudry(EstimatedTokens)} / {StringFormats.Lanudry(MaxTokens)}"
+        Return $"LLM Context Token Size: {StringFormats.Lanudry(EstimatedTokens)} / {StringFormats.Lanudry(MaxTokens)}"
     End Function
 
     ''' <summary>
