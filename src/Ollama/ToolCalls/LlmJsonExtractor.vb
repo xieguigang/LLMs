@@ -1,6 +1,9 @@
 ﻿Imports System.Text
 Imports System.Text.Json
 Imports System.Text.RegularExpressions
+Imports Microsoft.VisualBasic.MIME.application.json
+Imports Microsoft.VisualBasic.MIME.application.json.Javascript
+Imports Microsoft.VisualBasic.MIME.application.json.LenientJson
 
 Public Module LlmJsonExtractor
 
@@ -26,7 +29,13 @@ Public Module LlmJsonExtractor
             If IsValidJson(markdownJson) Then Return markdownJson
             ' 如果代码块内的JSON被截断，尝试修复
             Dim repaired As String = TryRepairJson(markdownJson)
-            If IsValidJson(repaired) Then Return repaired
+            Dim repairedJson = LenientJsonParser.ParseJSON(repaired)
+
+            repaired = repairedJson.BuildJsonString()
+
+            If IsValidJson(repaired) Then
+                Return repaired
+            End If
         End If
 
         ' 3. 尝试寻找第一个 { 或 [ 开始的子串，并提取括号匹配的内容
@@ -40,16 +49,30 @@ Public Module LlmJsonExtractor
 
         If startIndex > -1 Then
             Dim rawJson As String = ExtractBalancedSubstring(text.Substring(startIndex))
-            If IsValidJson(rawJson) Then Return rawJson
+            If IsValidJson(rawJson) Then
+                Return rawJson
+            End If
 
             ' 如果提取的括号匹配内容无效，尝试修复截断
             Dim repaired As String = TryRepairJson(rawJson)
-            If IsValidJson(repaired) Then Return repaired
+            Dim repairedJson = LenientJsonParser.ParseJSON(repaired)
+
+            repaired = repairedJson.BuildJsonString()
+
+            If IsValidJson(repaired) Then
+                Return repaired
+            End If
         End If
 
         ' 4. 如果以上都失败，返回最后尝试修复的原文本（兜底）
         Dim finalRepair As String = TryRepairJson(text)
-        If IsValidJson(finalRepair) Then Return finalRepair
+        Dim finalRepairedJson = LenientJsonParser.ParseJSON(finalRepair)
+
+        finalRepair = finalRepairedJson.BuildJsonString()
+
+        If IsValidJson(finalRepair) Then
+            Return finalRepair
+        End If
 
         Return String.Empty ' 彻底无法解析
     End Function
