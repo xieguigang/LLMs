@@ -362,6 +362,39 @@
             background: linear-gradient(135deg, #EF4444, #DC2626);
             box-shadow: 0 2px 8px rgba(220, 38, 38, .3);
         }
+
+        .file-refs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 16px 0;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+        }
+
+        .file-refs:empty {
+            display: none;
+        }
+
+        .file-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, .08);
+            border: 1px solid rgba(37, 99, 235, .2);
+            color: var(--primary);
+            font-size: 12px;
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-chip .file-icon {
+            font-size: 12px;
+        }
     </style>
 </head>
 
@@ -376,6 +409,7 @@
                 </div>
             </div>
             <div class="actions">
+                <span class="status" id="tokenInfo">上下文 0 / 0 tokens</span>
                 <span class="status" id="status">空闲</span>
                 <button class="icon-btn" id="resetBtn" title="清空对话">清空</button>
             </div>
@@ -388,6 +422,8 @@
                 <p>在下方输入框中发送消息，回复将以流式方式实时显示。</p>
             </div>
         </main>
+
+        <div class="file-refs" id="fileRefs"></div>
 
         <footer class="composer">
             <textarea id="input" placeholder="输入消息，Enter 发送，Shift+Enter 换行…" rows="1"></textarea>
@@ -443,11 +479,44 @@
                 case 'reset':
                     resetUI();
                     break;
+                case 'token_update':
+                    updateTokenDisplay(msg.context_tokens || 0, msg.max_context_tokens || 0);
+                    break;
             }
+        }
+
+        function updateTokenDisplay(contextTokens, maxTokens) {
+            var tokenInfoEl = document.getElementById('tokenInfo');
+            tokenInfoEl.textContent = '上下文 ' + contextTokens + ' / ' + maxTokens + ' tokens';
         }
 
         function hideWelcome() {
             welcome.style.display = 'none';
+        }
+
+        /**
+         * 在输入框上方以只读 chip 形式显示当前添加的文件附件（由 WinForm 端 SetFileReference 调用）。
+         * 空文件名会被忽略；重置对话时容器会被清空。
+         */
+        function set_file_reference(filename) {
+            if (!filename) return;
+
+            var fileRefs = document.getElementById('fileRefs');
+
+            var chip = document.createElement('span');
+            chip.className = 'file-chip';
+            chip.title = filename;
+
+            var icon = document.createElement('span');
+            icon.className = 'file-icon';
+            icon.textContent = '📎';
+
+            var name = document.createElement('span');
+            name.textContent = filename;
+
+            chip.appendChild(icon);
+            chip.appendChild(name);
+            fileRefs.appendChild(chip);
         }
 
         function addUserMessage(text) {
@@ -595,6 +664,7 @@
             for (var i = 0; i < nodes.length; i++) {
                 nodes[i].remove();
             }
+            document.getElementById('fileRefs').innerHTML = '';
             welcome.style.display = '';
             current = null;
             setBusy(false);
@@ -750,6 +820,21 @@
                         });
                     } else if (m) {
                         modelNameEl.textContent = m;
+                    }
+                } catch (e) { }
+            }
+
+            // 读取宿主暴露的上下文 token 用量（host object 属性在异步代理下可能返回 Promise）
+            if (llm_host) {
+                try {
+                    var c = llm_host.ContextTokens;
+                    var mx = llm_host.MaxContextTokens;
+                    if (c && typeof c.then === 'function') {
+                        Promise.all([c, mx]).then(function (vals) {
+                            updateTokenDisplay(vals[0] || 0, vals[1] || 0);
+                        });
+                    } else {
+                        updateTokenDisplay(c || 0, mx || 0);
                     }
                 } catch (e) { }
             }

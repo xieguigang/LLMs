@@ -27,6 +27,34 @@ Public Class LLMHost
     End Property
 
     ''' <summary>
+    ''' the estimated current context token size of the host llm client, use for display in the web ui
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property ContextTokens As Integer
+        Get
+            If host.llm_host Is Nothing Then
+                Return 0
+            Else
+                Return host.llm_host.context_tokens
+            End If
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' the maximum context token size limit of the host llm client, use for display in the web ui
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property MaxContextTokens As Integer
+        Get
+            If host.llm_host Is Nothing Then
+                Return 0
+            Else
+                Return host.llm_host.max_context_tokens
+            End If
+        End Get
+    End Property
+
+    ''' <summary>
     ''' javascript call host method for send prompt text to llm, the response will be streamed
     ''' back to the web page via the push_token / start_response / end_response web messages.
     ''' </summary>

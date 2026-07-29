@@ -17,6 +17,7 @@ Public Class WebView2LLMUI
     ''' <param name="llm_host"></param>
     Public Sub SetHost(llm_host As LLMClient)
         Me.llm_host = llm_host.HookResponseStream(getOutputToken:=AddressOf PushOutputToken, getThinkToken:=AddressOf PushThinkToken)
+        Call PushTokenInfo()
     End Sub
 
     ''' <summary>
@@ -52,6 +53,7 @@ Public Class WebView2LLMUI
         Call SendMessage(New With {
             .action = "reset"
         })
+        Call PushTokenInfo()
     End Sub
 
     ''' <summary>
@@ -98,6 +100,23 @@ Public Class WebView2LLMUI
             .output = output,
             .think = think
         })
+        Call PushTokenInfo()
+    End Sub
+
+    ''' <summary>
+    ''' push the current context token usage (context_tokens / max_context_tokens) of the host
+    ''' llm client to the web html ui so it can render the context size indicator.
+    ''' </summary>
+    Public Sub PushTokenInfo()
+        If llm_host Is Nothing Then
+            Return
+        End If
+
+        Call SendMessage(New With {
+            .action = "token_update",
+            .context_tokens = llm_host.context_tokens,
+            .max_context_tokens = llm_host.max_context_tokens
+        })
     End Sub
 
     ''' <summary>
@@ -133,7 +152,8 @@ Public Class WebView2LLMUI
     Public Async Function SetFileReference(filepath As String) As Task
         Dim filename As String = filepath.FileName
         file_ref = filepath
-        Await WebView21.ExecuteScriptAsync($"set_file_reference('{filename.GetJson}')")
+        Dim json = JsonSerializer.Serialize(filename)
+        Await WebView21.ExecuteScriptAsync($"set_file_reference({json})")
     End Function
 
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
