@@ -70,11 +70,11 @@ Public Class LLMHost
         If host.file_ref.FileExists Then
             prompt_text = prompt_text & vbCrLf &
                 $"
------ referenced opened local file -----
-filename: {host.file_ref.FileName}
-filetext: 
+----- 当前所打开的文件 -----
+文件路径: {host.file_ref.GetFullPath}
+文件文本内容: 
 
-{host.file_ref.ReadAllText}
+{host.ResolveFileText}
 "
         End If
 

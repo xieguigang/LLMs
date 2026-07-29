@@ -1,6 +1,5 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
-Imports Microsoft.VisualBasic.FileIO.Path
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -154,8 +153,26 @@ Public Class WebView2LLMUI
     End Sub
 
     Friend file_ref As String
+    Friend file_handle As Func(Of String)
 
     Dim webViewInitialized As Boolean = False
+
+    Public Function ResolveFileText() As String
+        If file_handle Is Nothing Then
+            Return file_ref.ReadAllText
+        Else
+            Return file_handle()
+        End If
+    End Function
+
+    Public Async Function SetFileReferenceHandle(handle As Func(Of String), filename As String) As Task
+        file_ref = filename
+        file_handle = handle
+
+        If webViewInitialized Then
+            Await Me.SetFileReference
+        End If
+    End Function
 
     Public Async Function SetFileReference(filepath As String) As Task
         file_ref = filepath
@@ -167,6 +184,7 @@ Public Class WebView2LLMUI
 
     Public Async Function ClearFileReference() As Task
         file_ref = Nothing
+        file_handle = Nothing
 
         If webViewInitialized Then
             Await WebView21.ExecuteScriptAsync($"clear_file_reference();")
