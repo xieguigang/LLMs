@@ -688,65 +688,10 @@
         }
 
         /**
-         * 轻量 markdown 渲染：仅做转义 + 代码块（```lang ... ```）解析，避免外部 CDN 依赖与 XSS
+         * 直接渲染由 WinForm 宿主端（MarkdownRender）预先转换好的 html 内容，前端不再做 markdown 解析。
          */
-        function renderMarkdown(text) {
-            var frag = document.createDocumentFragment();
-            var lines = text.split('\n');
-            var inCode = false;
-            var codeLang = '';
-            var codeBuf = [];
-
-            function flushCode() {
-                var pre = document.createElement('pre');
-                pre.className = 'code-block';
-                var code = document.createElement('code');
-                code.textContent = codeBuf.join('\n');
-                pre.appendChild(code);
-                if (codeLang) {
-                    var lang = document.createElement('span');
-                    lang.className = 'code-lang';
-                    lang.textContent = codeLang;
-                    pre.appendChild(lang);
-                }
-                frag.appendChild(pre);
-                codeBuf = [];
-            }
-
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-
-                if (line.indexOf('```') === 0) {
-                    if (!inCode) {
-                        inCode = true;
-                        codeLang = line.slice(3).trim();
-                    } else {
-                        inCode = false;
-                        flushCode();
-                    }
-                } else if (inCode) {
-                    codeBuf.push(line);
-                } else if (line.trim() === '') {
-                    frag.appendChild(document.createElement('br'));
-                } else {
-                    var p = document.createElement('div');
-                    p.className = 'text-line';
-                    p.textContent = line;
-                    frag.appendChild(p);
-                }
-            }
-
-            if (inCode) {
-                flushCode();
-            }
-
-            return frag;
-        }
-
         function renderOutput() {
-            var frag = renderMarkdown(current.outputRaw);
-            current.outputEl.innerHTML = '';
-            current.outputEl.appendChild(frag);
+            current.outputEl.innerHTML = current.outputRaw;
         }
 
         function setBusy(b) {
