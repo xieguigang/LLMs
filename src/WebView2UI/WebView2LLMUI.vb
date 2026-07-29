@@ -167,7 +167,10 @@ Public Class WebView2LLMUI
 
     Public Async Function ClearFileReference() As Task
         file_ref = Nothing
-        Await WebView21.ExecuteScriptAsync($"clear_file_reference();")
+
+        If webViewInitialized Then
+            Await WebView21.ExecuteScriptAsync($"clear_file_reference();")
+        End If
     End Function
 
     Private Async Function SetFileReference() As Task
