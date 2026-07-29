@@ -7,6 +7,8 @@ Imports WebView2UI.My.Resources
 Public Class WebView2LLMUI
 
     Friend llm_host As LLMClient
+    Friend llm_callback As Action(Of LLMsResponse)
+
     Friend _cts As CancellationTokenSource
 
     Public ReadOnly Property llm As String
@@ -20,8 +22,10 @@ Public Class WebView2LLMUI
     ''' stream hook will be enabled so that the think/output tokens can be pushed to the web ui.
     ''' </summary>
     ''' <param name="llm_host"></param>
-    Public Sub SetHost(llm_host As LLMClient)
+    Public Sub SetHost(llm_host As LLMClient, Optional callback As Action(Of LLMsResponse) = Nothing)
         Me.llm_host = llm_host.HookResponseStream(getOutputToken:=AddressOf PushOutputToken, getThinkToken:=AddressOf PushThinkToken)
+        Me.llm_callback = callback
+
         Call PushTokenInfo()
     End Sub
 

@@ -85,11 +85,17 @@ Public Class LLMHost
         Try
             Dim response = Await host.llm_host.Chat(prompt_text, host._cts.Token)
 
+            If host.llm_callback IsNot Nothing Then
+                Call host.llm_callback(If(response, New LLMsResponse))
+            End If
+
             If response Is Nothing Then
                 Call host.PushEnd("", "")
             Else
-                response.think = makrdown.Transform(response.think)
-                response.output = makrdown.Transform(response.output)
+                response = New LLMsResponse With {
+                    .think = makrdown.Transform(response.think),
+                    .output = makrdown.Transform(response.output)
+                }
 
                 Call host.PushEnd(response.output, response.think)
 
