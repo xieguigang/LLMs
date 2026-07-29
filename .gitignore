@@ -241,3 +241,4 @@ _Pvt_Extensions
 .pkg/LLMs.zip
 .Rproj.user
 src/Ollama/build_log.txt
+src/WebView2UI/build_log.txt
