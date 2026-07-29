@@ -10,17 +10,17 @@ Imports Ollama.JSON.FunctionCall
 
 Public Class OllamaProvider : Implements ILLMProvider
 
-    Private ReadOnly _server As String
-
-    Public Sub New(Optional server As String = "127.0.0.1:11434")
-        _server = server
-    End Sub
+    ReadOnly _server As String
 
     Public ReadOnly Property ApiEndpoint As String Implements ILLMProvider.ApiEndpoint
         Get
             Return $"http://{_server}/api/chat"
         End Get
     End Property
+
+    Public Sub New(Optional server As String = "127.0.0.1:11434")
+        _server = server
+    End Sub
 
     Public Async Function StreamChatAsync(options As ChatRequestOptions, cancellationToken As CancellationToken) As Task(Of IEnumerable(Of ChatResponseChunk)) Implements ILLMProvider.StreamChatAsync
         ' 1. 将统一的 ChatRequestOptions 转换为 Ollama 的 RequestBody
