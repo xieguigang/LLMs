@@ -156,7 +156,7 @@ Public Class LLMClient : Implements IDisposable
             Else
                 ' 5. 准备下一轮请求 (带上工具结果)
                 ' 通常第二轮不需要再传 tools 定义
-                ' currentReq.Tools = Nothing
+                currentReq.Tools = Nothing
             End If
         Next
 

@@ -24,4 +24,8 @@
     <BuildType Solution="Rsharp_app_release|*" Project="Release" />
     <Platform Solution="Debug|x64" Project="x64" />
   </Project>
+  <Project Path="WebView2UI/WebView2UI.vbproj" Id="7faa3449-8cf9-48d7-89c1-b6a4bc3e1449">
+    <BuildType Solution="Rsharp_app_release|*" Project="Release" />
+    <Platform Solution="Debug|x64" Project="x64" />
+  </Project>
 </Solution>
