@@ -14,6 +14,9 @@
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/mime/application%json/JSON-netcore5.vbproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/mime/text%markdown/markdown.NET5.vbproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/mime/text%yaml/text.yaml.vbproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
