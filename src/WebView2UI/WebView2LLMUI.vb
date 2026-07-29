@@ -1,87 +1,13 @@
-﻿Imports System.Runtime.InteropServices
-Imports System.Text.Json
+﻿Imports System.Text.Json
 Imports System.Threading
-Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
 
 Public Class WebView2LLMUI
 
-    <ClassInterface(ClassInterfaceType.AutoDual)>
-    <ComVisible(True)>
-    Public Class LLMHost
-
-        ReadOnly host As WebView2LLMUI
-
-        Sub New(host As WebView2LLMUI)
-            Me.host = host
-        End Sub
-
-        ''' <summary>
-        ''' the current model name that configured in the host llm client, use for display in the web ui
-        ''' </summary>
-        ''' <returns></returns>
-        Public ReadOnly Property Model As String
-            Get
-                If host.llm_host Is Nothing Then
-                    Return ""
-                Else
-                    Return host.llm_host.Model
-                End If
-            End Get
-        End Property
-
-        ''' <summary>
-        ''' javascript call host method for send prompt text to llm, the response will be streamed
-        ''' back to the web page via the push_token / start_response / end_response web messages.
-        ''' </summary>
-        ''' <param name="prompt_text"></param>
-        Public Async Function SendMessage(prompt_text As String) As Task(Of String)
-            If host.llm_host Is Nothing Then
-                Call host.PushError("the llm host is not configured, please call SetHost first.")
-                Return (New LLMsResponse).GetJson
-            End If
-
-            Call host.BeginChat()
-
-            Try
-                Dim response = Await host.llm_host.Chat(prompt_text, host._cts.Token)
-
-                If response Is Nothing Then
-                    Call host.PushEnd("", "")
-                Else
-                    Call host.PushEnd(response.output, response.think)
-                    Return response.GetJson
-                End If
-            Catch ex As OperationCanceledException
-                ' user cancelled the generation, just end the response quietly
-                Call host.PushEnd("", "")
-            Catch ex As Exception
-                Call host.PushError(ex.Message)
-            End Try
-
-            Return (New LLMsResponse).GetJson
-        End Function
-
-        ''' <summary>
-        ''' cancel the current llm generation, triggered from the web ui stop button
-        ''' </summary>
-        Public Sub StopGeneration()
-            Call host.StopChat()
-        End Sub
-
-        ''' <summary>
-        ''' clear the conversation history in the host llm client and reset the web ui message list
-        ''' </summary>
-        Public Sub ResetConversation()
-            Call host.ResetConversation()
-        End Sub
-
-    End Class
-
-    Dim llm_host As LLMClient
-    Dim _cts As CancellationTokenSource
+    Friend llm_host As LLMClient
+    Friend _cts As CancellationTokenSource
 
     ''' <summary>
     ''' bind a <see cref="LLMClient"/> instance as the backend of this chat control. the response
@@ -96,7 +22,7 @@ Public Class WebView2LLMUI
     ''' start a new chat response: create a fresh cancellation token and notify the web ui to
     ''' create a new assistant bubble.
     ''' </summary>
-    Private Sub BeginChat()
+    Friend Sub BeginChat()
         If _cts IsNot Nothing Then
             Call _cts.Dispose()
         End If
@@ -108,7 +34,7 @@ Public Class WebView2LLMUI
     ''' <summary>
     ''' cancel the current chat generation
     ''' </summary>
-    Private Sub StopChat()
+    Friend Sub StopChat()
         If _cts IsNot Nothing Then
             Call _cts.Cancel()
         End If
@@ -117,7 +43,7 @@ Public Class WebView2LLMUI
     ''' <summary>
     ''' clear conversation memory in host and reset the web ui message list
     ''' </summary>
-    Private Sub ResetConversation()
+    Friend Sub ResetConversation()
         If llm_host IsNot Nothing Then
             Call llm_host.Clear()
         End If
