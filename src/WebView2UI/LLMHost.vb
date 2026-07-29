@@ -37,6 +37,17 @@ Public Class LLMHost
             Return (New LLMsResponse).GetJson
         End If
 
+        If host.file_ref.FileExists Then
+            prompt_text = prompt_text & vbCrLf &
+                $"
+----- referenced opened local file -----
+filename: {host.file_ref.FileName}
+filetext: 
+
+{host.file_ref.ReadAllText}
+"
+        End If
+
         Call host.BeginChat()
 
         Try

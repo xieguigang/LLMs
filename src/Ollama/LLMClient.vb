@@ -35,6 +35,16 @@ Public Class LLMClient : Implements IDisposable
     End Property
 
     ''' <summary>
+    ''' 获取当前上下文的估算的Token数量大小
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property context_tokens As Integer
+        Get
+            Return _context.EstimatedTokens
+        End Get
+    End Property
+
+    ''' <summary>
     ''' system message to the LLMs AI
     ''' </summary>
     Public Property system_message As String

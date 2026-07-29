@@ -1,5 +1,6 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -126,6 +127,14 @@ Public Class WebView2LLMUI
             WebView21.CoreWebView2.PostWebMessageAsJson(json)
         End If
     End Sub
+
+    Friend file_ref As String
+
+    Public Async Function SetFileReference(filepath As String) As Task
+        Dim filename As String = filepath.FileName
+        file_ref = filepath
+        Await WebView21.ExecuteScriptAsync($"set_file_reference('{filename.GetJson}')")
+    End Function
 
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
         Await WebViewLoader.Init(WebView21)
