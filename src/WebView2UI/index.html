@@ -25,7 +25,8 @@
             padding: 0;
         }
 
-        html, body {
+        html,
+        body {
             height: 100%;
         }
 
@@ -172,8 +173,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .msg.user {
@@ -269,7 +277,9 @@
         }
 
         @keyframes blink {
-            to { visibility: hidden; }
+            to {
+                visibility: hidden;
+            }
         }
 
         .text-line {
@@ -838,10 +848,10 @@
                     var mx = llm_host.MaxContextTokens;
                     if (c && typeof c.then === 'function') {
                         Promise.all([c, mx]).then(function (vals) {
-                            updateTokenDisplay(vals[0] || 0, vals[1] || 0);
+                            updateTokenDisplay(vals[0] || '0', vals[1] || '0');
                         });
                     } else {
-                        updateTokenDisplay(c || 0, mx || 0);
+                        updateTokenDisplay(c || '0', mx || '0');
                     }
                 } catch (e) { }
             }
