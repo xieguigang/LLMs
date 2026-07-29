@@ -519,6 +519,13 @@
             fileRefs.appendChild(chip);
         }
 
+        /**
+         * 清空输入框上方的所有文件附件 chip（由 WinForm 端 ClearFileReference 调用）。
+         */
+        function clear_file_reference() {
+            document.getElementById('fileRefs').innerHTML = '';
+        }
+
         function addUserMessage(text) {
             hideWelcome();
 
