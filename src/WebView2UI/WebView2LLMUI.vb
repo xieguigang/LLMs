@@ -1,4 +1,6 @@
 ﻿Imports System.Text.Json
+Imports Microsoft.Web.WebView2.Core
+Imports WebView2UI.My.Resources
 
 Public Class WebView2LLMUI
 
@@ -32,5 +34,9 @@ Public Class WebView2LLMUI
 
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
         Await WebViewLoader.Init(WebView21)
+    End Sub
+
+    Private Sub WebView21_CoreWebView2InitializationCompleted(sender As Object, e As CoreWebView2InitializationCompletedEventArgs) Handles WebView21.CoreWebView2InitializationCompleted
+        WebView21.CoreWebView2.NavigateToString(HtmlUiResource.index)
     End Sub
 End Class
