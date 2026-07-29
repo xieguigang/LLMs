@@ -8,8 +8,9 @@ Imports WebView2UI.My.Resources
 
 Public Class WebView2LLMUI
 
+    <ClassInterface(ClassInterfaceType.AutoDual)>
     <ComVisible(True)>
-    Private Class LLMHost
+    Public Class LLMHost
 
         ReadOnly host As WebView2LLMUI
 
