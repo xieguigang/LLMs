@@ -50,6 +50,6 @@ Public Class WebView2LLMUI
 
     Private Sub WebView21_CoreWebView2InitializationCompleted(sender As Object, e As CoreWebView2InitializationCompletedEventArgs) Handles WebView21.CoreWebView2InitializationCompleted
         WebView21.CoreWebView2.AddHostObjectToScript("llm_host", New LLMHost(Me))
-        WebView21.CoreWebView2.NavigateToString(HtmlUiResource.index)
+        WebViewLoader.NavigateToLargeString(WebView21, HtmlUiResource.index)
     End Sub
 End Class
