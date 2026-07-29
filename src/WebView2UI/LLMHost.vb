@@ -1,4 +1,5 @@
 ﻿Imports System.Runtime.InteropServices
+Imports Microsoft.VisualBasic.MIME.text.markdown
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama
 
@@ -7,6 +8,7 @@ Imports Ollama
 Public Class LLMHost
 
     ReadOnly host As WebView2LLMUI
+    ReadOnly makrdown As New MarkdownRender
 
     Sub New(host As WebView2LLMUI)
         Me.host = host
@@ -30,12 +32,12 @@ Public Class LLMHost
     ''' the estimated current context token size of the host llm client, use for display in the web ui
     ''' </summary>
     ''' <returns></returns>
-    Public ReadOnly Property ContextTokens As Integer
+    Public ReadOnly Property ContextTokens As String
         Get
             If host.llm_host Is Nothing Then
                 Return 0
             Else
-                Return host.llm_host.context_tokens
+                Return StringFormats.Lanudry(host.llm_host.context_tokens)
             End If
         End Get
     End Property
@@ -44,12 +46,12 @@ Public Class LLMHost
     ''' the maximum context token size limit of the host llm client, use for display in the web ui
     ''' </summary>
     ''' <returns></returns>
-    Public ReadOnly Property MaxContextTokens As Integer
+    Public ReadOnly Property MaxContextTokens As String
         Get
             If host.llm_host Is Nothing Then
                 Return 0
             Else
-                Return host.llm_host.max_context_tokens
+                Return StringFormats.Lanudry(host.llm_host.max_context_tokens)
             End If
         End Get
     End Property
@@ -84,7 +86,11 @@ filetext:
             If response Is Nothing Then
                 Call host.PushEnd("", "")
             Else
+                response.think = makrdown.Transform(response.think)
+                response.output = makrdown.Transform(response.output)
+
                 Call host.PushEnd(response.output, response.think)
+
                 Return response.GetJson
             End If
         Catch ex As OperationCanceledException
