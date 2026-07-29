@@ -167,6 +167,10 @@ Public Class WebView2LLMUI
         End If
     End Function
 
+    Public Async Function ClearFileReference() As Task
+
+    End Function
+
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
         Await WebViewLoader.Init(WebView21)
     End Sub
