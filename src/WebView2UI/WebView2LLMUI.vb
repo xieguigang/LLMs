@@ -1,5 +1,6 @@
 ﻿Imports System.Runtime.InteropServices
 Imports System.Text.Json
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -20,9 +21,11 @@ Public Class WebView2LLMUI
         ''' </summary>
         ''' <param name="prompt_text"></param>
         ''' <returns></returns>
-        Public Async Function SendMessage(prompt_text As String) As Task
+        Public Async Function SendMessage(prompt_text As String) As Task(Of String)
             If host.llm_host IsNot Nothing Then
-                Await host.llm_host.Chat(prompt_text)
+                Return (Await host.llm_host.Chat(prompt_text)).GetJson
+            Else
+                Return (New LLMsResponse).GetJson
             End If
         End Function
 
