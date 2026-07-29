@@ -67,7 +67,7 @@ Public Class LLMHost
             Return (New LLMsResponse).GetJson
         End If
 
-        If host.file_ref.FileExists Then
+        If host.SourceAvailable Then
             prompt_text = prompt_text & vbCrLf &
                 $"
 ----- 当前所打开的文件 -----

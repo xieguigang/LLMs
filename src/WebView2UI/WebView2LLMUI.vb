@@ -157,6 +157,10 @@ Public Class WebView2LLMUI
 
     Dim webViewInitialized As Boolean = False
 
+    Public Function SourceAvailable() As Boolean
+        Return file_ref.FileExists OrElse Not file_handle Is Nothing
+    End Function
+
     Public Function ResolveFileText() As String
         If file_handle Is Nothing Then
             Return file_ref.ReadAllText
