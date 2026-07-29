@@ -1,8 +1,8 @@
 ﻿
 Imports Microsoft.VisualBasic.CommandLine.Reflection
 Imports Microsoft.VisualBasic.ComponentModel.DataSourceModel
+Imports Microsoft.VisualBasic.ComponentModel.Ranges.Unit
 Imports Microsoft.VisualBasic.Linq
-Imports Microsoft.VisualBasic.MIME.application.json.Javascript
 Imports Microsoft.VisualBasic.Scripting.MetaData
 Imports Ollama
 Imports Ollama.JSON.FunctionCall
@@ -30,14 +30,14 @@ Module OLlamaDemo
     <ExportAPI("new")>
     Public Function create(model As String,
                            Optional ollama_server As String = "127.0.0.1:11434",
-                           Optional max_memory_size As Integer = 1000,
+                           Optional max_memory_size As Integer = 1 * ByteSize.MB,
                            Optional logfile As String = Nothing,
                            Optional preserve_memory As Boolean = True) As LLMClient
 
         Dim ollama As New OllamaProvider(ollama_server)
 
         Return New LLMClient(ollama, model, logfile:=logfile, preserveMemory:=preserve_memory) With {
-            .max_memory_size = max_memory_size
+            .max_context_tokens = max_memory_size
         }
     End Function
 
@@ -61,8 +61,19 @@ Module OLlamaDemo
 
     <ExportAPI("get_modelinfo")>
     Public Function get_modelinfo(ollama As LLMClient, Optional timeout As Double = 1, Optional env As Environment = Nothing) As Object
-        Dim json As JsonObject = ollama.GetModelInformation(timeout).GetAwaiter.GetResult
-        Dim modelinfo = json.createRObj(env)
+        Dim json As ModelInfo = ollama.GetModelInformation(timeout).GetAwaiter.GetResult
+        Dim modelinfo = New list(
+            slot("id") = json.Id,
+            slot("provider") = json.Provider,
+            slot("family") = json.Family,
+            slot("parm_size") = json.ParameterSize,
+            slot("quantization_level") = json.QuantizationLevel,
+            slot("format") = json.Format,
+            slot("owned_by") = json.OwnedBy,
+            slot("created_at") = CLng(json.CreatedAt),
+            slot("raw") = json.Raw.createRObj(env)
+        )
+
         Return modelinfo
     End Function
 
