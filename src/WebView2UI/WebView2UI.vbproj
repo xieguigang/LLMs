@@ -42,4 +42,6 @@
     </None>
   </ItemGroup>
 
+  <Import Project="..\..\..\galaxy\src\WebViewHelper\WebViewHelper.projitems" Label="Shared" />
+
 </Project>

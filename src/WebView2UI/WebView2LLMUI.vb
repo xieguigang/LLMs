@@ -30,4 +30,7 @@ Public Class WebView2LLMUI
         WebView21.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(payload))
     End Sub
 
+    Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
+        Await WebViewLoader.Init(WebView21)
+    End Sub
 End Class
