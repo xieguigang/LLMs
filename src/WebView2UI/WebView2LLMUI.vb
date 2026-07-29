@@ -34,7 +34,7 @@ Public Class WebView2LLMUI
     Dim llm_host As LLMClient
 
     Public Sub SetHost(llm_host As LLMClient)
-        Me.llm_host = llm_host
+        Me.llm_host = llm_host.HookResponseStream(getOutputToken:=AddressOf PushOutputToken, getThinkToken:=AddressOf PushThinkToken)
     End Sub
 
     ''' <summary>

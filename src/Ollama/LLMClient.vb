@@ -51,6 +51,9 @@ Public Class LLMClient : Implements IDisposable
         .UseProxy = False
     }) With {.Timeout = TimeSpan.FromHours(1)}
 
+    Dim _onThink As Action(Of String)
+    Dim _onOutput As Action(Of String)
+
     ''' <summary>
     ''' 
     ''' </summary>
@@ -74,6 +77,12 @@ Public Class LLMClient : Implements IDisposable
         _caller = New FunctionCaller(verbose:=debug)
         _context = New ChatContextMemory(logfile)
     End Sub
+
+    Public Function HookResponseStream(getOutputToken As Action(Of String), Optional getThinkToken As Action(Of String) = Nothing) As LLMClient
+        _onThink = getThinkToken
+        _onOutput = getOutputToken
+        Return Me
+    End Function
 
     ''' <summary>
     ''' 执行单个工具调用：优先使用 ai_caller 中注册的函数，否则使用外部 tool_invoke 引擎
@@ -176,10 +185,18 @@ Public Class LLMClient : Implements IDisposable
             If Not String.IsNullOrEmpty(chunk.ThinkContent) Then
                 Console.Write(chunk.ThinkContent)
                 thinkBuf.Append(chunk.ThinkContent)
+
+                If _onThink IsNot Nothing Then
+                    Call _onThink(chunk.ThinkContent)
+                End If
             End If
             If Not String.IsNullOrEmpty(chunk.DeltaContent) Then
                 Console.Write(chunk.DeltaContent)
                 outBuf.Append(chunk.DeltaContent)
+
+                If _onOutput IsNot Nothing Then
+                    Call _onOutput(chunk.DeltaContent)
+                End If
             End If
 
             ' 收集 Tool Calls
