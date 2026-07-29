@@ -1,0 +1,34 @@
+<html>
+
+<head>
+
+</head>
+
+<body>
+
+</body>
+
+<script type="text/javascript">
+    /**
+     * 接受来自WinForm宿主程序的WebView21.CoreWebView2.PostWebMessageAsJson产生的消息数据
+    */
+    function addLLMhandler() {
+        window.chrome.webview.addEventListener('message', function (event) {
+            const message = event.data;
+
+            if (message.action === 'push_token') {
+                const token = message.text;
+
+                if (message.type === 'think') {
+                    // token comes from LLM think
+                } else {
+                    // token comes from LLM output
+                }
+            }
+        });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => addLLMhandler());
+</script>
+
+</html>
