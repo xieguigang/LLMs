@@ -120,8 +120,8 @@ Public Class WebView2LLMUI
 
         Call SendMessage(New With {
             .action = "token_update",
-            .context_tokens = llm_host.context_tokens,
-            .max_context_tokens = llm_host.max_context_tokens
+            .context_tokens = StringFormats.Lanudry(llm_host.context_tokens),
+            .max_context_tokens = StringFormats.Lanudry(llm_host.max_context_tokens)
         })
     End Sub
 
