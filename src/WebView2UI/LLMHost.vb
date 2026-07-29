@@ -68,13 +68,15 @@ Public Class LLMHost
         End If
 
         If host.SourceAvailable Then
+            Dim text As String = Await host.ResolveFileText
+
             prompt_text = prompt_text & vbCrLf &
                 $"
 ----- 当前所打开的文件 -----
 文件路径: {host.file_ref.GetFullPath}
 文件文本内容: 
 
-{host.ResolveFileText}
+{text}
 "
         End If
 
