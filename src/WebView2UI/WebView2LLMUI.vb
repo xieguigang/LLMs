@@ -1,6 +1,7 @@
 ﻿Imports System.Runtime.InteropServices
 Imports System.Text.Json
 Imports Microsoft.Web.WebView2.Core
+Imports Ollama
 Imports WebView2UI.My.Resources
 
 Public Class WebView2LLMUI
@@ -14,7 +15,24 @@ Public Class WebView2LLMUI
             Me.host = host
         End Sub
 
+        ''' <summary>
+        ''' javascript call host method for send prompt text to llm
+        ''' </summary>
+        ''' <param name="prompt_text"></param>
+        ''' <returns></returns>
+        Public Async Function SendMessage(prompt_text As String) As Task
+            If host.llm_host IsNot Nothing Then
+                Await host.llm_host.Chat(prompt_text)
+            End If
+        End Function
+
     End Class
+
+    Dim llm_host As LLMClient
+
+    Public Sub SetHost(llm_host As LLMClient)
+        Me.llm_host = llm_host
+    End Sub
 
     ''' <summary>
     ''' Push LLM think token from host to web html ui via message

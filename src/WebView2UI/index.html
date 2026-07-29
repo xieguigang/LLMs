@@ -9,6 +9,8 @@
 </body>
 
 <script type="text/javascript">
+    var llm_host = null;
+
     /**
      * 接受来自WinForm宿主程序的WebView21.CoreWebView2.PostWebMessageAsJson产生的消息数据
     */
@@ -26,9 +28,25 @@
                 }
             }
         });
+
+        try {
+            return chrome.webview.hostObjects.llm_host;
+        } catch (ex) {
+            console.error("web application is not running on webview2 environment!");
+            return null;
+        }
     }
 
-    window.addEventListener("DOMContentLoaded", () => addLLMhandler());
+    /**
+     * js code call webview2 host object SendMessage function
+    */
+    function SendMessage(prompt_text) {
+        if (llm_host) {
+            llm_host.SendMessage(prompt_text);
+        }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => llm_host = addLLMhandler());
 </script>
 
 </html>
