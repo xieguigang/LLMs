@@ -1,7 +1,5 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
-Imports Microsoft.VisualBasic.FileIO.Path
-Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -10,6 +8,12 @@ Public Class WebView2LLMUI
 
     Friend llm_host As LLMClient
     Friend _cts As CancellationTokenSource
+
+    Public ReadOnly Property llm As String
+        Get
+            Return llm_host.Model
+        End Get
+    End Property
 
     ''' <summary>
     ''' bind a <see cref="LLMClient"/> instance as the backend of this chat control. the response
