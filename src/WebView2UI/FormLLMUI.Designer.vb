@@ -22,34 +22,28 @@ Partial Class FormLLMUI
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
-        WebView21 = New Microsoft.Web.WebView2.WinForms.WebView2()
-        CType(WebView21, ComponentModel.ISupportInitialize).BeginInit()
+        WebView2llmui1 = New WebView2LLMUI()
         SuspendLayout()
         ' 
-        ' WebView21
+        ' WebView2llmui1
         ' 
-        WebView21.AllowExternalDrop = True
-        WebView21.CreationProperties = Nothing
-        WebView21.DefaultBackgroundColor = Color.White
-        WebView21.Dock = DockStyle.Fill
-        WebView21.Location = New Point(0, 0)
-        WebView21.Name = "WebView21"
-        WebView21.Size = New Size(800, 450)
-        WebView21.TabIndex = 0
-        WebView21.ZoomFactor = 1R
+        WebView2llmui1.Dock = DockStyle.Fill
+        WebView2llmui1.Location = New Point(0, 0)
+        WebView2llmui1.Name = "WebView2llmui1"
+        WebView2llmui1.Size = New Size(800, 450)
+        WebView2llmui1.TabIndex = 0
         ' 
         ' FormLLMUI
         ' 
         AutoScaleDimensions = New SizeF(7F, 15F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(800, 450)
-        Controls.Add(WebView21)
+        Controls.Add(WebView2llmui1)
         Name = "FormLLMUI"
         Text = "WebView2 LLM UI"
-        CType(WebView21, ComponentModel.ISupportInitialize).EndInit()
         ResumeLayout(False)
     End Sub
 
-    Friend WithEvents WebView21 As Microsoft.Web.WebView2.WinForms.WebView2
+    Friend WithEvents WebView2llmui1 As WebView2LLMUI
 
 End Class
