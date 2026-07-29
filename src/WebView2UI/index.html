@@ -1,52 +1,762 @@
-<html>
+<!DOCTYPE html>
+<html lang="zh-CN">
 
 <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM Chat</title>
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --bg: #F7F8FA;
+            --panel: #FFFFFF;
+            --text: #1F2937;
+            --muted: #6B7280;
+            --danger: #DC2626;
+            --success: #16A34A;
+            --border: #E5E7EB;
+            --think-bg: #F3F4F6;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+            z-index: 2;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .model {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status {
+            font-size: 12px;
+            color: var(--muted);
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--think-bg);
+            transition: all .2s;
+        }
+
+        .status.busy {
+            color: var(--primary);
+            background: rgba(37, 99, 235, .1);
+        }
+
+        .icon-btn {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .welcome {
+            margin: auto;
+            text-align: center;
+            color: var(--muted);
+            max-width: 420px;
+        }
+
+        .welcome-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(37, 99, 235, .25);
+        }
+
+        .welcome h1 {
+            font-size: 20px;
+            color: var(--text);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .welcome p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .msg {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            max-width: 100%;
+            animation: fadeIn .25s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            flex: 0 0 32px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .bubble {
+            max-width: 78%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            line-height: 1.65;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+        }
+
+        .msg.assistant .bubble {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-top-left-radius: 4px;
+            min-width: 120px;
+        }
+
+        .msg.user .bubble {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            border-top-right-radius: 4px;
+        }
+
+        .think {
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: var(--think-bg);
+            overflow: hidden;
+            display: none;
+        }
+
+        .think.show {
+            display: block;
+        }
+
+        .think-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--muted);
+            user-select: none;
+        }
+
+        .think-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+
+        .think-content {
+            padding: 0 10px 8px;
+            font-size: 13px;
+            color: var(--muted);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 240px;
+            overflow: auto;
+        }
+
+        .output {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .output.streaming::after {
+            content: '▋';
+            color: var(--primary);
+            animation: blink 1s steps(2, start) infinite;
+            margin-left: 1px;
+        }
+
+        @keyframes blink {
+            to { visibility: hidden; }
+        }
+
+        .text-line {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .code-block {
+            position: relative;
+            background: #0F172A;
+            color: #E2E8F0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin: 8px 0;
+            overflow: auto;
+            font-family: Consolas, Menlo, monospace;
+            font-size: 13px;
+        }
+
+        .code-lang {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            font-size: 11px;
+            color: #94A3B8;
+            text-transform: uppercase;
+        }
+
+        .error-banner {
+            margin-top: 8px;
+            background: rgba(220, 38, 38, .08);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, .25);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        .composer {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            padding: 12px 16px;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+        }
+
+        #input {
+            flex: 1;
+            resize: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 160px;
+            outline: none;
+            transition: border-color .15s;
+            background: var(--bg);
+        }
+
+        #input:focus {
+            border-color: var(--primary);
+            background: #fff;
+        }
+
+        .send-btn {
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform .1s, box-shadow .15s;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, .3);
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        .send-btn.stop {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+            box-shadow: 0 2px 8px rgba(220, 38, 38, .3);
+        }
+    </style>
 </head>
 
 <body>
+    <div id="app">
+        <header class="topbar">
+            <div class="title-group">
+                <div class="logo">AI</div>
+                <div>
+                    <div class="title">LLM 智能助手</div>
+                    <div class="model" id="modelName">模型加载中…</div>
+                </div>
+            </div>
+            <div class="actions">
+                <span class="status" id="status">空闲</span>
+                <button class="icon-btn" id="resetBtn" title="清空对话">清空</button>
+            </div>
+        </header>
 
-</body>
+        <main class="messages" id="messages">
+            <div class="welcome" id="welcome">
+                <div class="welcome-logo">AI</div>
+                <h1>开始与 LLM 对话</h1>
+                <p>在下方输入框中发送消息，回复将以流式方式实时显示。</p>
+            </div>
+        </main>
 
-<script type="text/javascript">
-    var llm_host = null;
+        <footer class="composer">
+            <textarea id="input" placeholder="输入消息，Enter 发送，Shift+Enter 换行…" rows="1"></textarea>
+            <button id="sendBtn" class="send-btn">发送</button>
+        </footer>
+    </div>
 
-    /**
-     * 接受来自WinForm宿主程序的WebView21.CoreWebView2.PostWebMessageAsJson产生的消息数据
-    */
-    function addLLMhandler() {
-        window.chrome.webview.addEventListener('message', function (event) {
-            const message = event.data;
+    <script type="text/javascript">
+        var llm_host = null;
+        var busy = false;
+        var current = null; // 当前正在流式渲染的助手气泡状态
 
-            if (message.action === 'push_token') {
-                const token = message.text;
+        var messages = document.getElementById('messages');
+        var input = document.getElementById('input');
+        var sendBtn = document.getElementById('sendBtn');
+        var resetBtn = document.getElementById('resetBtn');
+        var statusEl = document.getElementById('status');
+        var modelNameEl = document.getElementById('modelName');
+        var welcome = document.getElementById('welcome');
 
-                if (message.type === 'think') {
-                    // token comes from LLM think
+        /**
+         * 接受来自 WinForm 宿主程序的 PostWebMessageAsJson 消息，并按 action 分发
+         */
+        function addLLMhandler() {
+            window.chrome.webview.addEventListener('message', function (event) {
+                handleMessage(event.data);
+            });
+
+            try {
+                return chrome.webview.hostObjects.llm_host;
+            } catch (ex) {
+                console.error('web application is not running on webview2 environment!');
+                return null;
+            }
+        }
+
+        function handleMessage(msg) {
+            if (!msg || !msg.action) return;
+
+            switch (msg.action) {
+                case 'start_response':
+                    startAssistant();
+                    break;
+                case 'push_token':
+                    appendToken(msg.type, msg.text || '');
+                    break;
+                case 'end_response':
+                    finalizeAssistant(msg.output || '', msg.think || '');
+                    break;
+                case 'error':
+                    showError(msg.message || '未知错误');
+                    break;
+                case 'reset':
+                    resetUI();
+                    break;
+            }
+        }
+
+        function hideWelcome() {
+            welcome.style.display = 'none';
+        }
+
+        function addUserMessage(text) {
+            hideWelcome();
+
+            var bubble = document.createElement('div');
+            bubble.className = 'msg user';
+
+            var body = document.createElement('div');
+            body.className = 'bubble';
+
+            var p = document.createElement('div');
+            p.className = 'text-line';
+            p.textContent = text;
+
+            body.appendChild(p);
+            bubble.appendChild(body);
+            messages.appendChild(bubble);
+            scrollToBottom();
+        }
+
+        function startAssistant() {
+            hideWelcome();
+
+            var bubble = document.createElement('div');
+            bubble.className = 'msg assistant';
+
+            var avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = 'AI';
+
+            var body = document.createElement('div');
+            body.className = 'bubble';
+
+            var think = document.createElement('div');
+            think.className = 'think';
+
+            var thinkHead = document.createElement('div');
+            thinkHead.className = 'think-head';
+            thinkHead.innerHTML = '<span class="think-dot"></span>思考过程';
+            thinkHead.addEventListener('click', function () {
+                think.classList.toggle('open');
+                think.classList.toggle('show');
+            });
+
+            var thinkContent = document.createElement('div');
+            thinkContent.className = 'think-content';
+
+            think.appendChild(thinkHead);
+            think.appendChild(thinkContent);
+
+            var output = document.createElement('div');
+            output.className = 'output streaming';
+
+            body.appendChild(think);
+            body.appendChild(output);
+            bubble.appendChild(avatar);
+            bubble.appendChild(body);
+            messages.appendChild(bubble);
+
+            current = {
+                bubble: bubble,
+                thinkEl: think,
+                thinkContent: thinkContent,
+                outputEl: output,
+                outputRaw: '',
+                hasThink: false
+            };
+
+            scrollToBottom();
+        }
+
+        function appendToken(type, text) {
+            if (!current) {
+                startAssistant();
+            }
+
+            if (type === 'think') {
+                current.hasThink = true;
+                current.thinkEl.classList.add('show');
+                current.thinkContent.textContent += text;
+            } else {
+                current.outputRaw += text;
+                renderOutput();
+            }
+
+            scrollToBottom();
+        }
+
+        function finalizeAssistant(output, think) {
+            if (!current) {
+                setBusy(false);
+                return;
+            }
+
+            // 用最终完整文本兜底，避免流式拼接时字符被拆分而丢失
+            if (output && output.length > current.outputRaw.length) {
+                current.outputRaw = output;
+            }
+            if (think && think.length > current.thinkContent.textContent.length) {
+                current.thinkContent.textContent = think;
+            }
+
+            renderOutput();
+            current.outputEl.classList.remove('streaming');
+
+            if (!current.hasThink && current.thinkContent.textContent.trim() === '') {
+                current.thinkEl.style.display = 'none';
+            }
+
+            current = null;
+            setBusy(false);
+            scrollToBottom();
+        }
+
+        function showError(msg) {
+            hideWelcome();
+
+            if (current) {
+                var banner = document.createElement('div');
+                banner.className = 'error-banner';
+                banner.textContent = '⚠ ' + msg;
+                current.bubble.querySelector('.bubble').appendChild(banner);
+                current.outputEl.classList.remove('streaming');
+                current = null;
+            } else {
+                var bubble = document.createElement('div');
+                bubble.className = 'msg assistant';
+                var body = document.createElement('div');
+                body.className = 'bubble';
+                var err = document.createElement('div');
+                err.className = 'error-banner';
+                err.textContent = '⚠ ' + msg;
+                body.appendChild(err);
+                bubble.appendChild(body);
+                messages.appendChild(bubble);
+            }
+
+            setBusy(false);
+            scrollToBottom();
+        }
+
+        function resetUI() {
+            var nodes = messages.querySelectorAll('.msg');
+            for (var i = 0; i < nodes.length; i++) {
+                nodes[i].remove();
+            }
+            welcome.style.display = '';
+            current = null;
+            setBusy(false);
+        }
+
+        /**
+         * 轻量 markdown 渲染：仅做转义 + 代码块（```lang ... ```）解析，避免外部 CDN 依赖与 XSS
+         */
+        function renderMarkdown(text) {
+            var frag = document.createDocumentFragment();
+            var lines = text.split('\n');
+            var inCode = false;
+            var codeLang = '';
+            var codeBuf = [];
+
+            function flushCode() {
+                var pre = document.createElement('pre');
+                pre.className = 'code-block';
+                var code = document.createElement('code');
+                code.textContent = codeBuf.join('\n');
+                pre.appendChild(code);
+                if (codeLang) {
+                    var lang = document.createElement('span');
+                    lang.className = 'code-lang';
+                    lang.textContent = codeLang;
+                    pre.appendChild(lang);
+                }
+                frag.appendChild(pre);
+                codeBuf = [];
+            }
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+
+                if (line.indexOf('```') === 0) {
+                    if (!inCode) {
+                        inCode = true;
+                        codeLang = line.slice(3).trim();
+                    } else {
+                        inCode = false;
+                        flushCode();
+                    }
+                } else if (inCode) {
+                    codeBuf.push(line);
+                } else if (line.trim() === '') {
+                    frag.appendChild(document.createElement('br'));
                 } else {
-                    // token comes from LLM output
+                    var p = document.createElement('div');
+                    p.className = 'text-line';
+                    p.textContent = line;
+                    frag.appendChild(p);
+                }
+            }
+
+            if (inCode) {
+                flushCode();
+            }
+
+            return frag;
+        }
+
+        function renderOutput() {
+            var frag = renderMarkdown(current.outputRaw);
+            current.outputEl.innerHTML = '';
+            current.outputEl.appendChild(frag);
+        }
+
+        function setBusy(b) {
+            busy = b;
+            sendBtn.textContent = b ? '停止' : '发送';
+            sendBtn.classList.toggle('stop', b);
+            statusEl.textContent = b ? '生成中' : '空闲';
+            statusEl.classList.toggle('busy', b);
+
+            if (!b) {
+                input.focus();
+            }
+        }
+
+        function sendPrompt() {
+            var text = input.value.trim();
+
+            if (!text || busy) return;
+            if (!llm_host) {
+                showError('LLM 控件尚未初始化');
+                return;
+            }
+
+            addUserMessage(text);
+            input.value = '';
+            autoResize();
+            setBusy(true);
+
+            try {
+                var p = llm_host.SendMessage(text);
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function (err) {
+                        showError('调用 LLM 失败: ' + (err && err.message ? err.message : String(err)));
+                    });
+                }
+            } catch (err) {
+                showError('调用 LLM 失败: ' + err);
+                setBusy(false);
+            }
+        }
+
+        function autoResize() {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(function () {
+                messages.scrollTop = messages.scrollHeight;
+            });
+        }
+
+        sendBtn.addEventListener('click', function () {
+            if (busy) {
+                if (llm_host) llm_host.StopGeneration();
+            } else {
+                sendPrompt();
+            }
+        });
+
+        resetBtn.addEventListener('click', function () {
+            if (llm_host) llm_host.ResetConversation();
+        });
+
+        input.addEventListener('input', autoResize);
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (busy) {
+                    if (llm_host) llm_host.StopGeneration();
+                } else {
+                    sendPrompt();
                 }
             }
         });
 
-        try {
-            return chrome.webview.hostObjects.llm_host;
-        } catch (ex) {
-            console.error("web application is not running on webview2 environment!");
-            return null;
-        }
-    }
+        window.addEventListener('DOMContentLoaded', function () {
+            llm_host = addLLMhandler();
 
-    /**
-     * js code call webview2 host object SendMessage function
-    */
-    function SendMessage(prompt_text) {
-        if (llm_host) {
-            llm_host.SendMessage(prompt_text);
-        }
-    }
+            // 读取宿主暴露的模型名（host object 属性在异步代理下可能返回 Promise）
+            if (llm_host && llm_host.Model) {
+                try {
+                    var m = llm_host.Model;
+                    if (m && typeof m.then === 'function') {
+                        m.then(function (name) {
+                            if (name) modelNameEl.textContent = name;
+                        });
+                    } else if (m) {
+                        modelNameEl.textContent = m;
+                    }
+                } catch (e) { }
+            }
 
-    window.addEventListener("DOMContentLoaded", () => llm_host = addLLMhandler());
-</script>
+            input.focus();
+        });
+    </script>
+</body>
 
 </html>
