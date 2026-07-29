@@ -25,6 +25,16 @@ Public Class LLMClient : Implements IDisposable
     Public Property tools As List(Of FunctionTool)
 
     ''' <summary>
+    ''' the current model name that configured for this LLM client, use for display in the UI host
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property Model As String
+        Get
+            Return _model
+        End Get
+    End Property
+
+    ''' <summary>
     ''' system message to the LLMs AI
     ''' </summary>
     Public Property system_message As String
