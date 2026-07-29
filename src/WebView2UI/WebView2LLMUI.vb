@@ -1,8 +1,20 @@
-﻿Imports System.Text.Json
+﻿Imports System.Runtime.InteropServices
+Imports System.Text.Json
 Imports Microsoft.Web.WebView2.Core
 Imports WebView2UI.My.Resources
 
 Public Class WebView2LLMUI
+
+    <ComVisible(True)>
+    Private Class LLMHost
+
+        ReadOnly host As WebView2LLMUI
+
+        Sub New(host As WebView2LLMUI)
+            Me.host = host
+        End Sub
+
+    End Class
 
     ''' <summary>
     ''' Push LLM think token from host to web html ui via message
@@ -37,6 +49,7 @@ Public Class WebView2LLMUI
     End Sub
 
     Private Sub WebView21_CoreWebView2InitializationCompleted(sender As Object, e As CoreWebView2InitializationCompletedEventArgs) Handles WebView21.CoreWebView2InitializationCompleted
+        WebView21.CoreWebView2.AddHostObjectToScript("llm_host", New LLMHost(Me))
         WebView21.CoreWebView2.NavigateToString(HtmlUiResource.index)
     End Sub
 End Class

@@ -63,5 +63,36 @@ Namespace My.Resources
                 resourceCulture = value
             End Set
         End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to &lt;html&gt;
+        '''
+        '''&lt;head&gt;
+        '''
+        '''&lt;/head&gt;
+        '''
+        '''&lt;body&gt;
+        '''
+        '''&lt;/body&gt;
+        '''
+        '''&lt;script type=&quot;text/javascript&quot;&gt;
+        '''    /**
+        '''     * 接受来自WinForm宿主程序的WebView21.CoreWebView2.PostWebMessageAsJson产生的消息数据
+        '''    */
+        '''    function addLLMhandler() {
+        '''        window.chrome.webview.addEventListener(&apos;message&apos;, function (event) {
+        '''            const message = event.data;
+        '''
+        '''            if (message.action === &apos;push_token&apos;) {
+        '''                const token = message.text;
+        '''
+        '''                if (message.type === &apos;think&apos;) {
+        '''                    // token comes [rest of string was truncated]&quot;;.
+        '''</summary>
+        Friend Shared ReadOnly Property index() As String
+            Get
+                Return ResourceManager.GetString("index", resourceCulture)
+            End Get
+        End Property
     End Class
 End Namespace
