@@ -1,5 +1,6 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
+Imports Microsoft.VisualBasic.FileIO.Path
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -157,18 +158,23 @@ Public Class WebView2LLMUI
     Dim webViewInitialized As Boolean = False
 
     Public Async Function SetFileReference(filepath As String) As Task
-        Dim filename As String = filepath.FileName
-        Dim json = JsonSerializer.Serialize(filename)
-
         file_ref = filepath
 
         If webViewInitialized Then
-            Await WebView21.ExecuteScriptAsync($"set_file_reference({json})")
+            Await Me.SetFileReference
         End If
     End Function
 
     Public Async Function ClearFileReference() As Task
+        file_ref = Nothing
+        Await WebView21.ExecuteScriptAsync($"clear_file_reference();")
+    End Function
 
+    Private Async Function SetFileReference() As Task
+        Dim filename As String = file_ref.FileName
+        Dim json = JsonSerializer.Serialize(filename)
+
+        Await WebView21.ExecuteScriptAsync($"set_file_reference({json});")
     End Function
 
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
@@ -184,10 +190,7 @@ Public Class WebView2LLMUI
         webViewInitialized = True
 
         If Not file_ref.StringEmpty(, True) Then
-            Dim filename As String = file_ref.FileName
-            Dim json = JsonSerializer.Serialize(filename)
-
-            Await WebView21.ExecuteScriptAsync($"set_file_reference({json})")
+            Await SetFileReference()
         End If
     End Sub
 End Class
