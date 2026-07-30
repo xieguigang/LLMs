@@ -1,6 +1,7 @@
 ﻿Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
 
@@ -198,7 +199,6 @@ Public Class LLMClient : Implements IDisposable
         Dim toolCallsToExecute As New List(Of ToolCallInfo)
         ' 1. 通过 Provider 拉取流式数据
         Dim chunks As IEnumerable(Of ChatResponseChunk) = Await _provider.StreamChatAsync(currentReq, cancellationToken)
-        Dim skipDeepSeekMLLeak As Boolean = True
 
         ' 2. 处理流式响应
         For Each chunk In chunks
@@ -269,24 +269,31 @@ Public Class LLMClient : Implements IDisposable
                 End With
 
                 If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
-                    If skipDeepSeekMLLeak Then
-                        If _preserveMemory Then
-                            _context.Enqueue(New ChatMessage With {
-                                .Role = "assistant",
-                                .Content = outBuf.ToString()
-                            })
-                            _context.Enqueue(New ChatMessage With {
-                                .Role = "user",
-                                .Content = "无效的DSML tool_calls函数调用指令，请不要再继续输出这种函数调用指令"
-                            })
-                        End If
+                    Dim result As New List(Of String)
 
-                        Return Nothing
-                    Else
-                        toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
-                    End If
+                    For Each tc As ToolCallInfo In DsmlParser.ParseToolCalls(outBuf.ToString)
+                        Dim fval As String = ExecuteTool(tc)
 
-                    GoTo exec
+                        Call result.Add("工具函数调用：" & tc.GetJson)
+                        Call result.Add("工具返回结果：" & fval)
+                        Call result.Add("")
+                    Next
+
+                    Dim llm As New ChatMessage With {
+                        .Role = "assistant",
+                        .Content = outBuf.ToString()
+                    }
+                    Dim err As New ChatMessage With {
+                        .Role = "user",
+                        .Content = result.JoinBy(vbCrLf)
+                    }
+
+                    _context.Enqueue(llm)
+                    _context.Enqueue(err)
+
+                    currentReq.Messages.AddRange({llm, err})
+
+                    Return Nothing
                 End If
             End If
 
