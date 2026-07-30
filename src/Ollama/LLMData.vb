@@ -55,7 +55,7 @@ Public Class ChatResponseChunk
     ''' <returns></returns>
     Public Property DeltaContent As String
     ''' <summary>
-    ''' 流式思考(reasoning)增量，例如 Ollama/DeepSeek-R1 的 <think> 内容
+    ''' 流式思考(reasoning)增量，例如 Ollama/DeepSeek-R1 的 &lt;think> 内容
     ''' </summary>
     ''' <returns></returns>
     Public Property ThinkContent As String

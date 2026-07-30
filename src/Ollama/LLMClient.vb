@@ -1,6 +1,8 @@
-﻿Imports System.Net.Http
+﻿Imports System.ComponentModel
+Imports System.Net.Http
 Imports System.Text
 Imports System.Threading
+Imports Microsoft.VisualBasic.CommandLine.Reflection
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama.JSON
 Imports Ollama.JSON.FunctionCall
@@ -186,7 +188,11 @@ Public Class LLMClient : Implements IDisposable
             Else
                 ' 5. 准备下一轮请求 (带上工具结果)
                 ' 通常第二轮不需要再传 tools 定义
-                currentReq.Tools = Nothing
+
+                ' 20260730
+                ' 或许不应该将Tools设置为空，不然LLM很可能出现记不住函数名称的问题，浪费Token
+                ' 在这里注释掉下面的代码
+                ' currentReq.Tools = Nothing
             End If
         Next
 
