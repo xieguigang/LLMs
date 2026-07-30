@@ -1,5 +1,6 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
+Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
 Imports WebView2UI.My.Resources
@@ -8,6 +9,7 @@ Public Class WebView2LLMUI
 
     Friend llm_host As LLMClient
     Friend llm_callback As Action(Of LLMsResponse)
+    Friend llm_client As LLMHost
 
     Friend _cts As CancellationTokenSource
 
@@ -216,8 +218,14 @@ Public Class WebView2LLMUI
         Await WebViewLoader.Init(WebView21)
     End Sub
 
+    Public Async Function SendMessage(promptText As String) As Task(Of LLMsResponse)
+        Return (Await llm_client.SendMessage(promptText)).LoadJSON(Of LLMsResponse)
+    End Function
+
     Private Sub WebView21_CoreWebView2InitializationCompleted(sender As Object, e As CoreWebView2InitializationCompletedEventArgs) Handles WebView21.CoreWebView2InitializationCompleted
-        WebView21.CoreWebView2.AddHostObjectToScript("llm_host", New LLMHost(Me))
+        llm_client = New LLMHost(Me)
+
+        WebView21.CoreWebView2.AddHostObjectToScript("llm_host", llm_client)
         WebViewLoader.NavigateToLargeString(WebView21, HtmlUiResource.index)
     End Sub
 
