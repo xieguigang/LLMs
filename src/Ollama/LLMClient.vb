@@ -270,6 +270,17 @@ Public Class LLMClient : Implements IDisposable
 
                 If firstLine = "<｜｜DSML｜｜tool_calls>" AndAlso lastLine = "</｜｜DSML｜｜tool_calls>" Then
                     If skipDeepSeekMLLeak Then
+                        If _preserveMemory Then
+                            _context.Enqueue(New ChatMessage With {
+                                .Role = "assistant",
+                                .Content = outBuf.ToString()
+                            })
+                            _context.Enqueue(New ChatMessage With {
+                                .Role = "user",
+                                .Content = "无效的DSML tool_calls函数调用指令，请不要再继续输出这种函数调用指令"
+                            })
+                        End If
+
                         Return Nothing
                     Else
                         toolCallsToExecute = New List(Of ToolCallInfo)(DsmlParser.ParseToolCalls(outBuf.ToString))
