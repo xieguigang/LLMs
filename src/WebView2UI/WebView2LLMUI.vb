@@ -11,9 +11,15 @@ Public Class WebView2LLMUI
 
     Friend _cts As CancellationTokenSource
 
-    Public ReadOnly Property llm As String
+    Public ReadOnly Property modelId As String
         Get
             Return llm_host.Model
+        End Get
+    End Property
+
+    Public ReadOnly Property llm As LLMClient
+        Get
+            Return llm_host
         End Get
     End Property
 
