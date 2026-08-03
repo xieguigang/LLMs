@@ -19,6 +19,10 @@ Public Class WebView2LLMUI
         End Get
     End Property
 
+    ''' <summary>
+    ''' set llm model reference via <see cref="SetHost(LLMClient, Action(Of LLMsResponse))"/>
+    ''' </summary>
+    ''' <returns></returns>
     Public ReadOnly Property llm As LLMClient
         Get
             Return llm_host
@@ -191,7 +195,7 @@ Public Class WebView2LLMUI
     End Function
 
     Public Async Function SetFileReference(filepath As String) As Task
-        file_ref = filepath
+        file_ref = filepath.GetFullPath
 
         If webViewInitialized Then
             Await Me.SetFileReference

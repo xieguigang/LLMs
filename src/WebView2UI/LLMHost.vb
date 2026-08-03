@@ -56,6 +56,22 @@ Public Class LLMHost
         End Get
     End Property
 
+    Private Async Function AttachFile(prompt_text As String, top As Integer) As Task(Of String)
+        Dim text As String = Await host.ResolveFileText
+        Dim lines As String() = text.LineTokens
+
+        prompt_text = prompt_text & vbCrLf &
+            $"
+----- 当前所打开的文件 -----
+文件路径: {host.file_ref.GetFullPath}
+文件行数：{lines.Length}{If(top < lines.Length, $" (在这里预览前{top}行数据，如果需要读取文件全部数据，可以使用read_file函数来读取)", "")}
+文件文本内容: 
+
+{lines.Take(top).JoinBy(vbCrLf)}
+"
+        Return prompt_text
+    End Function
+
     ''' <summary>
     ''' javascript call host method for send prompt text to llm, the response will be streamed
     ''' back to the web page via the push_token / start_response / end_response web messages.
@@ -68,16 +84,7 @@ Public Class LLMHost
         End If
 
         If host.SourceAvailable Then
-            Dim text As String = Await host.ResolveFileText
-
-            prompt_text = prompt_text & vbCrLf &
-                $"
------ 当前所打开的文件 -----
-文件路径: {host.file_ref.GetFullPath}
-文件文本内容: 
-
-{text}
-"
+            prompt_text = Await AttachFile(prompt_text, 100)
         End If
 
         Call host.BeginChat()
