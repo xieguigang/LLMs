@@ -1,13 +1,24 @@
 Imports System.IO
+Imports System.Threading.Tasks
 Imports Microsoft.VisualBasic.Serialization.JSON
 
 ''' <summary>
+''' 上下文管理模式：Trim = 直接丢弃旧消息；Compress = 通过 LLM 将旧消息压缩为摘要。
+''' </summary>
+Public Enum ContextManagementMode
+    ''' <summary>直接丢弃旧消息（默认，保持向后兼容）</summary>
+    Trim
+    ''' <summary>将旧消息压缩为摘要文本，节省 Token 占用</summary>
+    Compress
+End Enum
+
+''' <summary>
 ''' 对话记忆上下文：将多轮 ChatMessage 维护为先进先出队列，并以近似算法估算 token 占用，
-''' 当累计 token 超过 <see cref="MaxTokens"/> 时自动从最旧消息开始裁剪，同时保证
+''' 当累计 token 超过 <see cref="MaxTokens"/> 时自动从最旧消息开始裁剪或压缩，同时保证
 ''' assistant(tool_calls) 与其紧跟的 tool 结果消息成组保留，避免出现孤立的 tool 消息导致 API 报错。
 ''' </summary>
 ''' <remarks>
-''' token 采用启发式估算（字符数/4 与 词数*1.3 取较大值 + 每条消息开销），属“软上限”，
+''' token 采用启发式估算（字符数/4 与 词数*1.3 取较大值 + 每条消息开销），属"软上限"，
 ''' 与真实 BPE 分词存在偏差，仅用于历史裁剪，不影响实际发送给模型的请求。
 ''' </remarks>
 Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
@@ -25,6 +36,24 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     ''' 最大上下文 token 数量上限，默认 1,000,000（1M）。超过后从历史最旧端裁剪。
     ''' </summary>
     Public Property MaxTokens As Long = 1000000
+
+    ''' <summary>
+    ''' 上下文管理模式：<see cref="ContextManagementMode.Trim"/>（直接丢弃）或 <see cref="ContextManagementMode.Compress"/>（LLM 摘要压缩）。
+    ''' 默认为 Trim 以保持向后兼容。
+    ''' </summary>
+    Public Property Mode As ContextManagementMode = ContextManagementMode.Trim
+
+    ''' <summary>
+    ''' 压缩委托：接收待压缩的消息组列表，异步返回摘要文本。
+    ''' 由外部（如 LLMClient）注入实际的 LLM 总结能力。未配置时 Compress 模式将自动回退为 Trim。
+    ''' </summary>
+    Public Property CompressionDelegate As Func(Of List(Of ChatMessage), Task(Of String))
+
+    ''' <summary>
+    ''' 压缩触发阈值（相对于 MaxTokens 的比例），默认 0.85（即达到 MaxTokens 的 85% 时触发压缩），
+    ''' 预留缓冲空间避免在发送请求前紧急压缩。
+    ''' </summary>
+    Public Property CompressionThreshold As Double = 0.85
 
     ''' <summary>当前累计 token 估算值</summary>
     Public ReadOnly Property EstimatedTokens As Long
@@ -55,9 +84,9 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     End Function
 
     ''' <summary>
-    ''' 入队一条消息：累加 token 估算并立即触发裁剪。
+    ''' 异步入队一条消息：累加 token 估算并根据 <see cref="Mode"/> 触发裁剪或压缩。
     ''' </summary>
-    Public Sub Enqueue(msg As ChatMessage)
+    Public Async Function EnqueueAsync(msg As ChatMessage) As Task
         If msg Is Nothing Then
             Return
         ElseIf _log IsNot Nothing Then
@@ -69,12 +98,21 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
         _queue.Enqueue(msg)
         _estimatedTokens += req_size
 
-        Call Trim()
+        ' 根据模式选择裁剪或压缩
+        If Mode = ContextManagementMode.Compress Then
+            Dim triggerTokens As Long = CLng(MaxTokens * CompressionThreshold)
+            If _estimatedTokens > triggerTokens Then
+                Await CompressAsync()
+            End If
+        Else
+            Call Trim()
+        End If
+
         Call Console.WriteLine()
         Call Console.WriteLine(Me.ToString)
         Call Console.WriteLine($"Current Request Tokens: {StringFormats.Lanudry(req_size)}")
         Call Console.WriteLine()
-    End Sub
+    End Function
 
     ''' <summary>
     ''' 清空记忆上下文。
@@ -96,17 +134,14 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     End Function
 
     ''' <summary>
-    ''' 按 token 上限裁剪：把 assistant(tool_calls) 与紧随其后的连续 tool 消息视为一个“组”，
-    ''' 超过预算时从最旧组开始整组弹出，至少保留最新一组。
+    ''' 将消息列表切分为"组"：普通消息自成一组；assistant(含 tool_calls) 吸收其后所有紧邻的 tool 消息。
     ''' </summary>
-    Private Sub Trim()
-        If _estimatedTokens <= MaxTokens Then Return
-
-        Dim list = Snapshot()
+    ''' <param name="list">消息列表</param>
+    ''' <returns>分组后的消息组列表</returns>
+    Private Shared Function GroupMessages(list As List(Of ChatMessage)) As List(Of List(Of ChatMessage))
         Dim groups As New List(Of List(Of ChatMessage))
         Dim i As Integer = 0
 
-        ' 将消息切分为组：普通消息自成一组；assistant(含 tool_calls) 吸收其后所有紧邻的 tool 消息
         While i < list.Count
             Dim startIdx = i
 
@@ -122,6 +157,33 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             groups.Add(list.GetRange(startIdx, i - startIdx))
         End While
 
+        Return groups
+    End Function
+
+    ''' <summary>
+    ''' 使用剩余分组重建内部队列并重新精确计算 token 总量。
+    ''' </summary>
+    Private Sub RebuildQueueFromGroups(groups As List(Of List(Of ChatMessage)), fromIdx As Integer)
+        _queue.Clear()
+        _estimatedTokens = 0
+        For g = fromIdx To groups.Count - 1
+            For Each m In groups(g)
+                _queue.Enqueue(m)
+                _estimatedTokens += EstimateTokens(m)
+            Next
+        Next
+    End Sub
+
+    ''' <summary>
+    ''' 按 token 上限裁剪：把 assistant(tool_calls) 与紧随其后的连续 tool 消息视为一个"组"，
+    ''' 超过预算时从最旧组开始整组弹出，至少保留最新一组。
+    ''' </summary>
+    Private Sub Trim()
+        If _estimatedTokens <= MaxTokens Then Return
+
+        Dim list = Snapshot()
+        Dim groups = GroupMessages(list)
+
         ' 从最旧组开始移除，直到回到预算内；但至少保留最新一组
         Dim removeGroups As Integer = 0
         While _estimatedTokens > MaxTokens AndAlso (groups.Count - removeGroups) > 1
@@ -131,16 +193,69 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             removeGroups += 1
         End While
 
-        ' 用剩余分组重建队列，并重新精确计算 token 总量
-        _queue.Clear()
-        _estimatedTokens = 0
-        For g = removeGroups To groups.Count - 1
-            For Each m In groups(g)
-                _queue.Enqueue(m)
-                _estimatedTokens += EstimateTokens(m)
-            Next
-        Next
+        ' 用剩余分组重建队列
+        Call RebuildQueueFromGroups(groups, removeGroups)
     End Sub
+
+    ''' <summary>
+    ''' 异步上下文压缩：弹出最旧的消息组，通过 <see cref="CompressionDelegate"/> 委托调用 LLM 生成摘要，
+    ''' 用摘要 system 消息替代原始消息以节省 Token。压缩失败时自动回退为 Trim。
+    ''' </summary>
+    Private Async Function CompressAsync() As Task
+        ' 若未配置压缩委托，回退为 Trim
+        If CompressionDelegate Is Nothing Then
+            Call Trim()
+            Return
+        End If
+
+        Dim allRemovedMessages As New List(Of ChatMessage)
+
+        Try
+            Dim list = Snapshot()
+            Dim groups = GroupMessages(list)
+
+            ' 从最旧组开始移除，直到回到预算内；至少保留最新一组
+            Dim removeGroups As Integer = 0
+            While _estimatedTokens > MaxTokens AndAlso (groups.Count - removeGroups) > 1
+                For Each m In groups(removeGroups)
+                    allRemovedMessages.Add(m)
+                    _estimatedTokens -= EstimateTokens(m)
+                Next
+                removeGroups += 1
+            End While
+
+            ' 如果有消息被移除，调用 LLM 生成摘要
+            If allRemovedMessages.Count > 0 Then
+                Dim summaryText As String = Await CompressionDelegate(allRemovedMessages)
+
+                If Not String.IsNullOrEmpty(summaryText) Then
+                    ' 创建摘要 system 消息并插入队列头部
+                    Dim summaryMsg As New ChatMessage With {
+                        .Role = "system",
+                        .Content = $"[Conversation Context Summary]{vbCrLf}{summaryText}"
+                    }
+
+                    _queue.Clear()
+                    _estimatedTokens = 0
+                    _queue.Enqueue(summaryMsg)
+                    _estimatedTokens += EstimateTokens(summaryMsg)
+
+                    For g = removeGroups To groups.Count - 1
+                        For Each m In groups(g)
+                            _queue.Enqueue(m)
+                            _estimatedTokens += EstimateTokens(m)
+                        Next
+                    Next
+                Else
+                    ' 摘要为空，直接重建队列
+                    Call RebuildQueueFromGroups(groups, removeGroups)
+                End If
+            End If
+        Catch ex As Exception
+            ' 压缩失败，回退为 Trim
+            Call Trim()
+        End Try
+    End Function
 
     ''' <summary>
     ''' 粗略估算单条消息的 token 数量（启发式，非精确 BPE）。

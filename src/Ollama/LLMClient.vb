@@ -155,7 +155,7 @@ Public Class LLMClient : Implements IDisposable
         Dim newUserMsg As New ChatMessage With {.Role = "user", .Content = prompt_text}
 
         If _preserveMemory Then
-            _context.Enqueue(newUserMsg)
+            Await _context.EnqueueAsync(newUserMsg)
         End If
 
         Dim reqOptions As New ChatRequestOptions With {
@@ -294,8 +294,8 @@ Public Class LLMClient : Implements IDisposable
                         .Content = result.JoinBy(vbCrLf)
                     }
 
-                    _context.Enqueue(llm)
-                    _context.Enqueue(err)
+                    Await _context.EnqueueAsync(llm)
+                    Await _context.EnqueueAsync(err)
 
                     currentReq.Messages.AddRange({llm, err})
 
@@ -309,7 +309,7 @@ Public Class LLMClient : Implements IDisposable
             }
 
             If _preserveMemory Then
-                _context.Enqueue(finalAssistantMsg)
+                Await _context.EnqueueAsync(finalAssistantMsg)
             End If
 
             Return New LLMsResponse With {
@@ -325,7 +325,7 @@ exec:
             .ToolCalls = toolCallsToExecute
         }
         If _preserveMemory Then
-            _context.Enqueue(assistantMsg)
+            Await _context.EnqueueAsync(assistantMsg)
         End If
         currentReq.Messages.Add(assistantMsg)
 
@@ -344,7 +344,7 @@ exec:
             })
 
             If _preserveMemory Then
-                _context.Enqueue(toolMsg)
+                Await _context.EnqueueAsync(toolMsg)
             End If
 
             currentReq.Messages.Add(toolMsg)
