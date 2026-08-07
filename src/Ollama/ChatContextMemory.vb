@@ -1,5 +1,4 @@
 Imports System.IO
-Imports System.Threading.Tasks
 Imports Microsoft.VisualBasic.Serialization.JSON
 
 ''' <summary>
@@ -295,15 +294,39 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
 
     ''' <summary>
     ''' 文本 token 启发式估算：取「字符数/4」与「词数*1.3」的较大值（向上取整）。
+    ''' 改进的 LLM Token 启发式估算：兼容中英文，无内存分配
     ''' </summary>
     Public Shared Function EstimateTextTokens(text As String) As Long
         If String.IsNullOrEmpty(text) Then Return 0
 
-        Dim lenTokens As Long = text.Length \ 4
-        Dim words = text.Split(New Char() {" "c, vbTab, vbCr, vbLf}, StringSplitOptions.RemoveEmptyEntries)
-        Dim wordTokens As Long = CLng(Math.Ceiling(words.Length * 1.3))
+        Dim span As String = text
+        Dim wordCount As Long = 0
+        Dim cjkCount As Long = 0
+        Dim inWord As Boolean = False
 
-        Return Math.Max(lenTokens, wordTokens)
+        For i As Integer = 0 To span.Length - 1
+            Dim c As Char = span(i)
+
+            ' 判断是否为中日韩字符 (基本汉字范围: 0x4E00 - 0x9FFF)
+            If c >= ChrW(&H4E00) AndAlso c <= ChrW(&H9FFF) Then
+                cjkCount += 1
+                inWord = False ' 遇到中文，重置英文单词状态
+            ElseIf Char.IsWhiteSpace(c) Then
+                inWord = False
+            ElseIf Not inWord Then
+                wordCount += 1
+                inWord = True
+            End If
+        Next
+
+        ' 估算逻辑：
+        ' 1. 中文字符按 1.5 个 token 估算
+        ' 2. 英文等按空格分割的词数 * 1.3
+        ' 3. 整体字符数 / 4 向上取整作为兜底
+        Dim estimatedTokens As Double = (cjkCount * 1.5) + (wordCount * 1.3)
+        Dim lenTokens As Double = Math.Ceiling(text.Length / 4.0)
+
+        Return CLng(Math.Max(estimatedTokens, lenTokens))
     End Function
 
     ''' <summary>
