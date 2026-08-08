@@ -15,7 +15,6 @@ Public Class LLMClient : Implements IDisposable
 
     ReadOnly _provider As ILLMProvider
     ReadOnly _model As String
-    ReadOnly _maxRounds As Integer = 15
     ReadOnly _preserveMemory As Boolean = True
 
     Dim _context As ChatContextMemory
@@ -26,6 +25,7 @@ Public Class LLMClient : Implements IDisposable
 
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
+    Public Property maxRounds As Integer = 15
 
     ''' <summary>
     ''' the current model name that configured for this LLM client, use for display in the UI host
