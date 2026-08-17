@@ -25,6 +25,11 @@ Public Class LLMClient : Implements IDisposable
 
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
+
+    ''' <summary>
+    ''' Max tool call rounds
+    ''' </summary>
+    ''' <returns></returns>
     Public Property maxRounds As Integer = 15
 
     ''' <summary>
@@ -196,7 +201,7 @@ Public Class LLMClient : Implements IDisposable
             End If
         Next
 
-        Throw New Exception("Exceeded max tool call rounds")
+        Throw New MaxTryRunException(_maxRounds)
     End Function
 
     Private Async Function ChatRound(currentReq As ChatRequestOptions, cancellationToken As CancellationToken, fullThink As StringBuilder, fullOutput As StringBuilder) As Task(Of LLMsResponse)
