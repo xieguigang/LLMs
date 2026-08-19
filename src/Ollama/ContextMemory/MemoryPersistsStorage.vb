@@ -259,9 +259,12 @@ Public Class MemoryPersistsStorage
             Return
         End If
 
+        ' 关键词可能包含整句（如中文短语），统一经 Tokenize 切分为与索引文档一致的粒度，
+        ' 以保证 query 词与倒排索引词在同一粒度下匹配。
         Dim words As String() = keywords _
             .Where(Function(w) Not String.IsNullOrWhiteSpace(w)) _
-            .Select(Function(w) w.Trim()) _
+            .SelectMany(AddressOf Tokenize) _
+            .Distinct() _
             .ToArray()
 
         If words.Length = 0 Then
