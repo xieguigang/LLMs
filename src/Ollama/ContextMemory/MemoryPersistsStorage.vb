@@ -1,7 +1,6 @@
 ﻿Imports System.IO
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports ComponentModel.DataSourceModel.Repository
-Imports Microsoft.VisualBasic.Language.Default
 
 ''' <summary>
 ''' 上下文记忆的持久化与全文模糊检索门面。
@@ -32,8 +31,9 @@ Public Class MemoryPersistsStorage
 
     ''' <summary>
     ''' 全文模糊索引引擎：每条记忆文档加入一篇文本，支持基于关键词组的近似匹配召回。
+    ''' 由于引擎内部字典为只读字段、未提供 Clear，故以可重新赋值的方式持有，便于清空重建。
     ''' </summary>
-    ReadOnly _index As New QGramFullText
+    Dim _index As QGramFullText
 
     ''' <summary>
     ''' 文档文本（消息拼接摘要）到原始 <see cref="ChatMessage"/> 的稳定映射，用于命中后回填完整消息。
@@ -60,10 +60,15 @@ Public Class MemoryPersistsStorage
     ''' 持久化文件路径（JSON）。若目录不存在将自动创建。为空或空白时仅启用内存索引、不进行落盘。
     ''' </param>
     Public Sub New(memory As ChatContextMemory, Optional filePath As String = Nothing)
-        _memory = memory Or New ChatContextMemory().Default
-        _filePath = filePath
+        If memory Is Nothing Then
+            Throw New ArgumentNullException(NameOf(memory), "ChatContextMemory 不能为空")
+        End If
 
-        If Not filePath.StringEmpty Then
+        _memory = memory
+        _filePath = filePath
+        _index = New QGramFullText(q:=Q)
+
+        If Not String.IsNullOrEmpty(filePath) Then
             Call Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath)))
         End If
     End Sub
@@ -103,7 +108,7 @@ Public Class MemoryPersistsStorage
     Private Sub IndexMessage(msg As ChatMessage)
         Dim doc As String = ToDocument(msg)
 
-        If doc.StringEmpty Then
+        If String.IsNullOrEmpty(doc) Then
             Return
         End If
 
@@ -116,9 +121,10 @@ Public Class MemoryPersistsStorage
 
     ''' <summary>
     ''' 清空全文索引与文档映射表。
+    ''' 由于 <see cref="QGramFullText"/> 未提供 Clear 方法，此处重建一个新的空索引实例。
     ''' </summary>
     Public Sub ClearIndex()
-        _index.Clear()
+        _index = New QGramFullText(q:=Q)
         _documents.Clear()
     End Sub
 
@@ -148,7 +154,7 @@ Public Class MemoryPersistsStorage
             Call IndexMessage(msg)
         Next
 
-        If _filePath.StringEmpty Then
+        If String.IsNullOrEmpty(_filePath) Then
             Return True
         End If
 
@@ -169,7 +175,7 @@ Public Class MemoryPersistsStorage
     ''' 文件损坏或反序列化失败时安全回退为空记忆、保留异常日志，不抛出异常。
     ''' </summary>
     Public Function Load() As List(Of ChatMessage)
-        If _filePath.StringEmpty OrElse Not File.Exists(_filePath) Then
+        If String.IsNullOrEmpty(_filePath) OrElse Not File.Exists(_filePath) Then
             Return New List(Of ChatMessage)
         End If
 
@@ -243,11 +249,10 @@ Public Class MemoryPersistsStorage
         Dim seen As New HashSet(Of ChatMessage)
 
         For Each hit In Search(keywords, top)
-            If _documents.TryGetValue(hit.text, Nothing) Then
-                Dim msg As ChatMessage = _documents(hit.text)
-                If msg IsNot Nothing AndAlso seen.Add(msg) Then
-                    Yield msg
-                End If
+            Dim msg As ChatMessage = Nothing
+
+            If _documents.TryGetValue(hit.text, msg) AndAlso msg IsNot Nothing AndAlso seen.Add(msg) Then
+                Yield msg
             End If
         Next
     End Function
