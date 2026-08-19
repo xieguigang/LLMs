@@ -233,7 +233,7 @@ Public Class MemoryPersistsStorage
         ' 以保证 query 词与倒排索引词在同一粒度下匹配。
         Dim words As String() = keywords _
             .Where(Function(w) Not String.IsNullOrWhiteSpace(w)) _
-            .SelectMany(AddressOf Tokenize) _
+            .SelectMany(AddressOf _index.Tokenize) _
             .Distinct() _
             .ToArray()
 
