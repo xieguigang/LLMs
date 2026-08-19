@@ -32,6 +32,8 @@ Public Class LLMClient : Implements IDisposable
     ''' <returns></returns>
     Public Property maxRounds As Integer = 15
 
+    Public Property echo_think_chunks As Boolean = True
+
     ''' <summary>
     ''' the current model name that configured for this LLM client, use for display in the UI host
     ''' </summary>
@@ -232,10 +234,13 @@ Public Class LLMClient : Implements IDisposable
         Dim chunks As IEnumerable(Of ChatResponseChunk) = Await _provider.StreamChatAsync(currentReq, cancellationToken)
 
         ' 2. 处理流式响应
-        For Each chunk In chunks
+        For Each chunk As ChatResponseChunk In chunks
             If Not String.IsNullOrEmpty(chunk.ThinkContent) Then
-                Console.Write(chunk.ThinkContent)
-                thinkBuf.Append(chunk.ThinkContent)
+                If echo_think_chunks Then
+                    Call Console.Write(chunk.ThinkContent)
+                End If
+
+                Call thinkBuf.Append(chunk.ThinkContent)
 
                 If _onThink IsNot Nothing Then
                     Call _onThink(chunk.ThinkContent)
