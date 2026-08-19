@@ -1,8 +1,5 @@
-Imports System
 Imports System.IO
-Imports System.Threading.Tasks
 Imports Ollama
-Imports Ollama.ContextMemory
 
 Module Program
 
@@ -48,7 +45,7 @@ Module Program
         For i As Integer = 0 To loaded.Count - 1
             Console.WriteLine($"  [{i}] {loaded(i).Role}: {loaded(i).Content}")
         Next
-        Console.WriteLine($"恢复一致性: {If(loaded.Count = 5 AndAlso loaded(3).Content.Contains(""KEGG""), "通过", "失败")}")
+        Console.WriteLine($"恢复一致性: {If(loaded.Count = 5 AndAlso loaded(3).Content.Contains("KEGG"), "通过", "失败")}")
         Console.WriteLine()
 
         ' 4. 关键词模糊检索（针对窗口外 / 长期记忆）

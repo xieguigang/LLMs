@@ -1,6 +1,6 @@
 ﻿Imports System.IO
+Imports Microsoft.VisualBasic.ComponentModel.DataSourceModel.Repository
 Imports Microsoft.VisualBasic.Serialization.JSON
-Imports ComponentModel.DataSourceModel.Repository
 
 ''' <summary>
 ''' 上下文记忆的持久化与全文模糊检索门面。
@@ -93,7 +93,7 @@ Public Class MemoryPersistsStorage
         Dim role As String = If(msg.Role, "unknown")
         Dim content As String = If(msg.Content, String.Empty)
 
-        If msg.ToolCalls IsNot Nothing AndAlso msg.ToolCalls.Length > 0 Then
+        If msg.ToolCalls IsNot Nothing AndAlso msg.ToolCalls.Count > 0 Then
             ' assistant 的工具调用：记录函数名，省略参数细节以避免索引噪声
             Dim calls As String = String.Join(", ", msg.ToolCalls.Select(Function(t) t.FunctionName))
             content = content & " [tool_call: " & calls & "]"
@@ -159,7 +159,7 @@ Public Class MemoryPersistsStorage
         End If
 
         Try
-            Dim json As String = messages.GetJson(Of List(Of ChatMessage))(simpleDict:=True)
+            Dim json As String = messages.GetJson(simpleDict:=True)
             Call File.WriteAllText(_filePath, json, System.Text.Encoding.UTF8)
             Console.WriteLine($"[MemoryPersistsStorage] 已保存 {messages.Count} 条消息到 {_filePath}")
             Return True
