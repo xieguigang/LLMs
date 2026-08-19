@@ -56,6 +56,19 @@ Public Class LLMClient : Implements IDisposable
     ''' system message to the LLMs AI
     ''' </summary>
     Public Property system_message As String
+
+    ''' <summary>
+    ''' 暴露底层对话上下文记忆对象，供 <see cref="MemoryPersistsStorage"/> 等持久化门面挂载使用。
+    ''' 调用方不应直接向该上下文手动入队 system 消息（系统提示请使用 <see cref="system_message"/> 属性），
+    ''' 以免持久化重载后产生重复的 system 消息。
+    ''' </summary>
+    ''' <returns>当前客户端所持有的对话上下文记忆实例</returns>
+    Public ReadOnly Property Context As ChatContextMemory
+        Get
+            Return _context
+        End Get
+    End Property
+
     ''' <summary>
     ''' 可选：外部工具执行引擎（当函数未在 ai_caller 中注册时使用）
     ''' </summary>
