@@ -2,16 +2,6 @@ Imports System.IO
 Imports Microsoft.VisualBasic.Serialization.JSON
 
 ''' <summary>
-''' 上下文管理模式：Trim = 直接丢弃旧消息；Compress = 通过 LLM 将旧消息压缩为摘要。
-''' </summary>
-Public Enum ContextManagementMode
-    ''' <summary>直接丢弃旧消息（默认，保持向后兼容）</summary>
-    Trim
-    ''' <summary>将旧消息压缩为摘要文本，节省 Token 占用</summary>
-    Compress
-End Enum
-
-''' <summary>
 ''' 对话记忆上下文：将多轮 ChatMessage 维护为先进先出队列，并以近似算法估算 token 占用，
 ''' 当累计 token 超过 <see cref="MaxTokens"/> 时自动从最旧消息开始裁剪或压缩，同时保证
 ''' assistant(tool_calls) 与其紧跟的 tool 结果消息成组保留，避免出现孤立的 tool 消息导致 API 报错。
