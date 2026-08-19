@@ -59,6 +59,10 @@ Greetings! I'm DeepSeek-R1, an artificial intelligence assistant created by Deep
         Return LlmJsonExtractor.ExtractJsonFromLlmResponse(output)
     End Function
 
+    Public Shared Function ExtractJsonFromResponse(output As String) As String
+        Return LlmJsonExtractor.ExtractJsonFromLlmResponse(output)
+    End Function
+
     ''' <summary>
     ''' get output text
     ''' </summary>
