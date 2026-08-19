@@ -112,7 +112,40 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     End Sub
 
     ''' <summary>
-    ''' 将内部队列快照为列表（供构造请求消息时复制）。
+    ''' 将当前上下文中的全部消息快照导出为列表，用于持久化存储或外部索引构建。
+    ''' 返回的列表为深拷贝（新建 List 但元素仍为原引用），调用方不应修改其中元素内容。
+    ''' </summary>
+    Public Function ExportMessages() As List(Of ChatMessage)
+        Return Snapshot()
+    End Function
+
+    ''' <summary>
+    ''' 从外部载入一组消息以重建上下文（如从持久化文件恢复）。
+    ''' 方法会清空现有队列，按传入顺序逐条入队并重新精确计算 token 估算，
+    ''' 严格保留原始消息顺序（包括 assistant(tool_calls) 与其后 tool 结果的成组关系），
+    ''' 不会触发裁剪或压缩，以保证恢复后的上下文与落盘时完全一致。
+    ''' </summary>
+    ''' <param name="messages">待恢复的消息集合（可为空或 Nothing，此时仅清空上下文）。</param>
+    Public Sub LoadMessages(messages As IEnumerable(Of ChatMessage))
+        Call _queue.Clear()
+        _estimatedTokens = 0
+
+        If messages Is Nothing Then
+            Return
+        End If
+
+        For Each m In messages
+            If m Is Nothing Then
+                Continue For
+            End If
+
+            _queue.Enqueue(m)
+            _estimatedTokens += EstimateTokens(m)
+        Next
+    End Sub
+
+    ''' <summary>
+    ''' 将内部队列快照为列表（供构造请求消息时复制，以及 <see cref="ExportMessages"/> 复用）。
     ''' </summary>
     Private Function Snapshot() As List(Of ChatMessage)
         Dim list As New List(Of ChatMessage)
