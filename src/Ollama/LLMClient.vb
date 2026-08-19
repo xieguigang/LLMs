@@ -151,10 +151,17 @@ Public Class LLMClient : Implements IDisposable
     End Function
 
     ''' <summary>
-    ''' 构造发送给 Provider 的消息列表：若首条不是 system 且设置了 system_message，则前置系统消息
+    ''' 构造发送给 Provider 的消息列表：若首条不是 system 且设置了 system_message，则前置系统消息。
     ''' </summary>
-    Private Function BuildRequestMessages() As List(Of ChatMessage)
+    ''' <param name="currentUserMsg">
+    ''' 当前用户消息。当 <see cref="_preserveMemory"/> 为 False（用户消息未进入上下文队列）时，
+    ''' 由该方法负责将其追加到请求消息尾部，保证 prompt 不会丢失。
+    ''' </param>
+    Private Function BuildRequestMessages(Optional currentUserMsg As ChatMessage = Nothing) As List(Of ChatMessage)
         Dim msgs As New List(Of ChatMessage)(_context)
+        If currentUserMsg IsNot Nothing Then
+            msgs.Add(currentUserMsg)
+        End If
         If (msgs.Count = 0 OrElse msgs(0).Role <> "system") AndAlso Not String.IsNullOrEmpty(system_message) Then
             msgs.Insert(0, New ChatMessage With {.Role = "system", .Content = system_message})
         End If
@@ -178,7 +185,7 @@ Public Class LLMClient : Implements IDisposable
 
         Dim reqOptions As New ChatRequestOptions With {
             .Model = _model,
-            .Messages = BuildRequestMessages(),
+            .Messages = BuildRequestMessages(If(_preserveMemory, Nothing, newUserMsg)),
             .Tools = Me.tools,
             .Temperature = Me.temperature
         }
