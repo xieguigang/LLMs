@@ -56,39 +56,9 @@ Public Class MemoryPersistsStorage
 
     ''' <summary>
     ''' 创建（或重建）一个 QGramFullText 全文索引实例。
-    ''' 注意：GCModeller 默认的 <see cref="TextSplit.MakeWords"/> 分词器为未实现的空桩（返回 null），
-    ''' 会导致索引崩溃，因此此处显式注入一个自实现的、支持中英文混合的可靠分词器。
     ''' </summary>
     Private Function CreateIndex() As QGramFullText
-        Return New QGramFullText(q:=Q, tokenlicer:=AddressOf Tokenize)
-    End Function
-
-    ''' <summary>
-    ''' 自定义分词器：兼容英文/数字词与中文（CJK）按单字切分。
-    ''' 中英文统一小写、去首尾空白后：
-    ''' - 连续的 [a-z0-9] 视为一个英文/数字词；
-    ''' - 连续的汉字逐个作为 token（与 <see cref="Search"/> 对查询关键词采用同一分词逻辑，保证粒度一致）。
-    ''' </summary>
-    Private Shared Function Tokenize(text As String) As IEnumerable(Of String)
-        If String.IsNullOrWhiteSpace(text) Then
-            Return Enumerable.Empty(Of String)()
-        End If
-
-        text = Strings.Trim(text).ToLower
-        Dim tokens As New List(Of String)
-
-        For Each m As Match In Regex.Matches(text, "[a-z0-9]+")
-            tokens.Add(m.Value)
-        Next
-
-        For Each m As Match In Regex.Matches(text, "[一-鿿]+")
-            Dim s As String = m.Value
-            For i As Integer = 0 To s.Length - 1
-                tokens.Add(Char.ToString(s(i)))
-            Next
-        Next
-
-        Return tokens.Distinct()
+        Return New QGramFullText(q:=Q)
     End Function
 
     ''' <summary>
