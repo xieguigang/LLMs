@@ -39,6 +39,13 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
     Public Property CompressionDelegate As Func(Of List(Of ChatMessage), Task(Of String))
 
     ''' <summary>
+    ''' 当本上下文因 token 超限制而裁剪/压缩、即将丢弃最早的消息时触发。
+    ''' 回调参数为即将被丢弃（移出活跃窗口）的消息列表，供外部归档到长期记忆。
+    ''' 未赋值时无副作用，保持向后兼容。
+    ''' </summary>
+    Public Property OnEvict As Action(Of List(Of ChatMessage)) = Nothing
+
+    ''' <summary>
     ''' 压缩触发阈值（相对于 MaxTokens 的比例），默认 0.85（即达到 MaxTokens 的 85% 时触发压缩），
     ''' 预留缓冲空间避免在发送请求前紧急压缩。
     ''' </summary>
@@ -215,6 +222,15 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             removeGroups += 1
         End While
 
+        ' 收集将被丢弃（移出活跃窗口）的消息，触发归档回调
+        If removeGroups > 0 AndAlso OnEvict IsNot Nothing Then
+            Dim removed As New List(Of ChatMessage)
+            For i = 0 To removeGroups - 1
+                removed.AddRange(groups(i))
+            Next
+            Call OnEvict(removed)
+        End If
+
         ' 用剩余分组重建队列
         Call RebuildQueueFromGroups(groups, removeGroups)
     End Sub
@@ -277,6 +293,11 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             ' 压缩失败，回退为 Trim
             Call Trim()
         End Try
+
+        ' 将被丢弃的消息归档（压缩模式：原文被摘要替代，原消息进入长期记忆）
+        If allRemovedMessages.Count > 0 AndAlso OnEvict IsNot Nothing Then
+            Call OnEvict(allRemovedMessages)
+        End If
     End Function
 
     ''' <summary>

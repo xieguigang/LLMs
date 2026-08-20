@@ -32,6 +32,20 @@ Public Class MemoryPersistsStorage
     ReadOnly _filePath As String
 
     ''' <summary>
+    ''' 长期记忆归档文件路径（JSONL 格式，每行一条被裁剪/压缩丢弃的 <see cref="ChatMessage"/>）。
+    ''' 与活跃窗口文件（<see cref="_filePath"/>）分离：活跃窗口只保存当前上下文，
+    ''' 归档文件独立保存所有被移出活跃窗口的历史对话，供 LLM 随时召回。
+    ''' 为空或空白时禁用归档落盘（向后兼容，行为等同旧版本）。
+    ''' </summary>
+    ReadOnly _archivePath As String
+
+    ''' <summary>
+    ''' 内存中已归档消息的完整集合（被裁剪/压缩丢弃、已加入全文索引的对话）。
+    ''' 用于 Save 时整体落盘为 JSONL，保证文件内容与内存一致、避免重复追加。
+    ''' </summary>
+    ReadOnly _archived As New List(Of ChatMessage)
+
+    ''' <summary>
     ''' 全文模糊索引引擎：每条记忆文档加入一篇文本，支持基于关键词组的近似匹配召回。
     ''' 由于引擎内部字典为只读字段、未提供 Clear，故以可重新赋值的方式持有，便于清空重建。
     ''' </summary>
@@ -68,17 +82,27 @@ Public Class MemoryPersistsStorage
     ''' <param name="filePath">
     ''' 持久化文件路径（JSON）。若目录不存在将自动创建。为空或空白时仅启用内存索引、不进行落盘。
     ''' </param>
-    Public Sub New(memory As ChatContextMemory, Optional filePath As String = Nothing)
+    ''' <param name="archivePath">
+    ''' 长期记忆归档文件路径（JSONL）。当上下文因 token 超限裁剪/压缩而丢弃消息时，这些被丢弃的消息会写入该文件并建立全文索引，
+    ''' 使 LLM 能够通过 <see cref="RecallMessages"/>/<see cref="Search"/> 找回被遗忘的长期记忆。
+    ''' 为空或空白时禁用归档（向后兼容，行为等同旧版本）。
+    ''' </param>
+    Public Sub New(memory As ChatContextMemory, Optional filePath As String = Nothing, Optional archivePath As String = Nothing)
         If memory Is Nothing Then
             Throw New ArgumentNullException(NameOf(memory), "ChatContextMemory 不能为空")
         End If
 
         _memory = memory
         _filePath = filePath
+        _archivePath = archivePath
         _index = CreateIndex()
 
         If Not String.IsNullOrEmpty(filePath) Then
             Call Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath)))
+        End If
+
+        If Not String.IsNullOrEmpty(_archivePath) Then
+            Call Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_archivePath)))
         End If
     End Sub
 
@@ -150,6 +174,83 @@ Public Class MemoryPersistsStorage
     End Sub
 
     ''' <summary>
+    ''' 归档一批被裁剪/压缩丢弃的消息：将其加入全文索引（供 <see cref="RecallMessages"/>/<see cref="Search"/> 找回），
+    ''' 并即时追加写入 JSONL 归档文件（逐行一条 <see cref="ChatMessage"/>，simpleDict 紧凑格式）。
+    ''' 该方法通常在 <see cref="ChatContextMemory"/> 的 <c>OnEvict</c> 回调中被调用。
+    ''' 写入或索引异常将被捕获并记录到控制台，不向上抛出以免中断主对话。
+    ''' </summary>
+    ''' <param name="msgs">即将被丢弃（移出活跃窗口）的消息列表。</param>
+    Public Sub AddArchived(msgs As IEnumerable(Of ChatMessage))
+        If msgs Is Nothing Then
+            Return
+        End If
+
+        Try
+            Dim lines As New List(Of String)
+
+            For Each msg In msgs
+                If msg Is Nothing Then
+                    Continue For
+                End If
+
+                ' 加入内存归档集合与全文索引（索引覆盖活跃窗口 + 归档，RecallMessages 即可召回被裁剪记忆）
+                _archived.Add(msg)
+                Call IndexMessage(msg)
+
+                ' 逐条序列化为 JSONL 一行
+                Dim line As String = msg.GetJson(simpleDict:=True)
+                If Not String.IsNullOrEmpty(line) Then
+                    lines.Add(line)
+                End If
+            Next
+
+            If lines.Count > 0 AndAlso Not String.IsNullOrEmpty(_archivePath) Then
+                Call File.AppendAllLines(_archivePath, lines, System.Text.Encoding.UTF8)
+                Console.WriteLine($"[MemoryPersistsStorage] 已归档 {lines.Count} 条丢弃消息到 {_archivePath}（累计 {_archived.Count} 条）")
+            End If
+        Catch ex As Exception
+            Call Console.Error.WriteLine($"[MemoryPersistsStorage] 归档丢弃消息失败: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' 从 JSONL 归档文件加载被裁剪的历史对话并加入全文索引（仅进索引，不进活跃上下文队列）。
+    ''' 应在 <see cref="Load"/> 之后调用，使"窗口外"的长期记忆在进程重启后仍可被检索。
+    ''' 文件不存在时安全返回；单行损坏将被跳过并记录，不影响其余归档。
+    ''' </summary>
+    Public Sub LoadArchive()
+        If String.IsNullOrEmpty(_archivePath) OrElse Not File.Exists(_archivePath) Then
+            Return
+        End If
+
+        Try
+            Dim loaded As Integer = 0
+
+            For Each line In File.ReadAllLines(_archivePath)
+                If String.IsNullOrWhiteSpace(line) Then
+                    Continue For
+                End If
+
+                Try
+                    Dim msg As ChatMessage = LoadJsonFile(Of ChatMessage)(file:=line, simpleDict:=True)
+
+                    If msg IsNot Nothing Then
+                        _archived.Add(msg)
+                        Call IndexMessage(msg)
+                        loaded += 1
+                    End If
+                Catch ex As Exception
+                    Call Console.Error.WriteLine($"[MemoryPersistsStorage] 归档行解析失败，已跳过: {ex.Message}")
+                End Try
+            Next
+
+            Console.WriteLine($"[MemoryPersistsStorage] 已从 {_archivePath} 加载 {loaded} 条长期记忆到全文索引")
+        Catch ex As Exception
+            Call Console.Error.WriteLine($"[MemoryPersistsStorage] 加载归档失败: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
     ''' 将当前上下文记忆保存到持久化文件，并同步重建全文索引。
     ''' 若未配置文件路径则返回 False（不落盘，但索引仍会基于当前上下文重建）。
     ''' 文件写入失败或序列化异常将被捕获并记录到控制台，不向上抛出以免中断会话。
@@ -171,6 +272,21 @@ Public Class MemoryPersistsStorage
             Dim json As String = messages.GetJson(simpleDict:=True)
             Call File.WriteAllText(_filePath, json, System.Text.Encoding.UTF8)
             Console.WriteLine($"[MemoryPersistsStorage] 已保存 {messages.Count} 条消息到 {_filePath}")
+
+            ' 同步归档文件：整体重写（避免每次 Save 重复追加，保证文件与内存 _archived 一致）
+            If Not String.IsNullOrEmpty(_archivePath) Then
+                Dim archiveLines As String() = _archived _
+                    .Select(Function(m) m.GetJson(simpleDict:=True)) _
+                    .Where(Function(s) Not String.IsNullOrEmpty(s)) _
+                    .ToArray()
+
+                If archiveLines.Length > 0 Then
+                    Call File.WriteAllLines(_archivePath, archiveLines, System.Text.Encoding.UTF8)
+                ElseIf File.Exists(_archivePath) Then
+                    Call File.WriteAllText(_archivePath, String.Empty, System.Text.Encoding.UTF8)
+                End If
+            End If
+
             Return True
         Catch ex As Exception
             Call Console.Error.WriteLine($"[MemoryPersistsStorage] 保存失败: {ex.Message}")
