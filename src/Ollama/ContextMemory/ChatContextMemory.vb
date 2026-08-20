@@ -228,7 +228,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
             For i = 0 To removeGroups - 1
                 removed.AddRange(groups(i))
             Next
-            Call OnEvict(removed)
+            Call OnEvict.Invoke(removed)
         End If
 
         ' 用剩余分组重建队列
@@ -296,7 +296,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
 
         ' 将被丢弃的消息归档（压缩模式：原文被摘要替代，原消息进入长期记忆）
         If allRemovedMessages.Count > 0 AndAlso OnEvict IsNot Nothing Then
-            Call OnEvict(allRemovedMessages)
+            Call OnEvict.Invoke(allRemovedMessages)
         End If
     End Function
 
