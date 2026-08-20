@@ -321,6 +321,10 @@ Public Class MemoryPersistsStorage
             Next
 
             Console.WriteLine($"[MemoryPersistsStorage] 已从 {_filePath} 加载 {messages.Count} 条消息并重建索引")
+
+            ' 加载被裁剪的长期记忆归档（仅进索引，不进活跃上下文）
+            Call LoadArchive()
+
             Return messages
         Catch ex As Exception
             Call Console.Error.WriteLine($"[MemoryPersistsStorage] 加载失败，已回退为空记忆: {ex.Message}")
