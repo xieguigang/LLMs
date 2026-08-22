@@ -150,8 +150,8 @@ Public Class OllamaProvider : Implements ILLMProvider
             }
 
             If Not msg.ToolCalls.IsNullOrEmpty Then
-                Dim tcs(msg.ToolCalls.Count - 1) As ToolCall
-                For t As Integer = 0 To msg.ToolCalls.Count - 1
+                Dim tcs(msg.ToolCalls.Length - 1) As ToolCall
+                For t As Integer = 0 To msg.ToolCalls.Length - 1
                     Dim tc = msg.ToolCalls(t)
                     tcs(t) = New ToolCall With {
                         .id = tc.Id,

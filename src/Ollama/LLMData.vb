@@ -5,10 +5,23 @@ Imports Ollama.JSON.FunctionCall
 ''' 统一的聊天消息模型
 ''' </summary>
 Public Class ChatMessage
-    Public Property Role As String ' system, user, assistant, tool
+
+    ''' <summary>
+    ''' system, user, assistant, tool
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property Role As String
     Public Property Content As String
-    Public Property ToolCalls As List(Of ToolCallInfo) ' 仅当 Role=assistant 且触发工具时使用
-    Public Property ToolCallId As String ' 仅当 Role=tool 时使用
+    ''' <summary>
+    ''' 仅当 Role=assistant 且触发工具时使用
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property ToolCalls As ToolCallInfo()
+    ''' <summary>
+    ''' 仅当 Role=tool 时使用
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property ToolCallId As String
 
     Public Overrides Function ToString() As String
         Return Content

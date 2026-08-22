@@ -352,7 +352,7 @@ exec:
         Dim assistantMsg As New ChatMessage With {
             .Role = "assistant",
             .Content = outBuf.ToString(),
-            .ToolCalls = toolCallsToExecute
+            .ToolCalls = toolCallsToExecute.ToArray
         }
         If _preserveMemory Then
             Await _context.EnqueueAsync(assistantMsg)

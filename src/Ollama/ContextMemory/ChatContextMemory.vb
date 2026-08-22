@@ -174,7 +174,7 @@ Public Class ChatContextMemory : Implements IEnumerable(Of ChatMessage)
         While i < list.Count
             Dim startIdx = i
 
-            If list(i).ToolCalls IsNot Nothing AndAlso list(i).ToolCalls.Count > 0 Then
+            If list(i).ToolCalls IsNot Nothing AndAlso list(i).ToolCalls.Length > 0 Then
                 i += 1
                 While i < list.Count AndAlso list(i).Role = "tool"
                     i += 1

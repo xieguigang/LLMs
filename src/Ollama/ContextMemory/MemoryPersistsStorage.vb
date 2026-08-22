@@ -126,7 +126,7 @@ Public Class MemoryPersistsStorage
         Dim role As String = If(msg.Role, "unknown")
         Dim content As String = If(msg.Content, String.Empty)
 
-        If msg.ToolCalls IsNot Nothing AndAlso msg.ToolCalls.Count > 0 Then
+        If msg.ToolCalls IsNot Nothing AndAlso msg.ToolCalls.Length > 0 Then
             ' assistant 的工具调用：记录函数名，省略参数细节以避免索引噪声
             Dim calls As String = String.Join(", ", msg.ToolCalls.Select(Function(t) t.FunctionName))
             content = content & " [tool_call: " & calls & "]"
