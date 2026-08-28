@@ -200,6 +200,17 @@
             justify-content: center;
             font-size: 12px;
             font-weight: 600;
+            overflow: hidden;
+        }
+
+        .avatar img,
+        .logo img,
+        .welcome-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+            display: block;
         }
 
         .bubble {
@@ -412,7 +423,7 @@
     <div id="app">
         <header class="topbar">
             <div class="title-group">
-                <div class="logo">AI</div>
+                <div class="logo" id="topLogo">AI</div>
                 <div>
                     <div class="title">LLM 智能助手</div>
                     <div class="model" id="modelName">模型加载中…</div>
@@ -427,7 +438,7 @@
 
         <main class="messages" id="messages">
             <div class="welcome" id="welcome">
-                <div class="welcome-logo">AI</div>
+                <div class="welcome-logo" id="welcomeLogo">AI</div>
                 <h1>开始与 LLM 对话</h1>
                 <p>在下方输入框中发送消息，回复将以流式方式实时显示。</p>
             </div>
@@ -445,6 +456,7 @@
         var llm_host = null;
         var busy = false;
         var current = null; // 当前正在流式渲染的助手气泡状态
+        var avatarUrl = ''; // AI 头像图片地址（url 或 data uri），为空时回退为 'AI' 文字头像
 
         var messages = document.getElementById('messages');
         var input = document.getElementById('input');
@@ -536,6 +548,42 @@
             document.getElementById('fileRefs').innerHTML = '';
         }
 
+        /**
+         * 渲染单个 AI 头像容器：若设置了 avatarUrl 则显示图片（url 或 data uri），
+         * 否则回退为默认的 'AI' 文字头像。
+         */
+        function applyAvatarTo(el, fallbackText) {
+            if (!el) return;
+
+            if (avatarUrl) {
+                el.innerHTML = '';
+
+                var img = document.createElement('img');
+                img.src = avatarUrl;
+                img.alt = 'AI';
+
+                el.appendChild(img);
+            } else {
+                el.textContent = fallbackText;
+            }
+        }
+
+        /**
+         * 设置 AI 头像（由 WinForm 端 avatar 属性调用），url 支持 http(s) 链接或 data uri 字符串；
+         * 传入空值则恢复默认的 'AI' 文字头像。
+         */
+        function set_avatar(url) {
+            avatarUrl = url || '';
+
+            applyAvatarTo(document.getElementById('topLogo'), 'AI');
+            applyAvatarTo(document.getElementById('welcomeLogo'), 'AI');
+
+            var nodes = document.querySelectorAll('.avatar');
+            for (var i = 0; i < nodes.length; i++) {
+                applyAvatarTo(nodes[i], 'AI');
+            }
+        }
+
         function addUserMessage(text) {
             hideWelcome();
 
@@ -563,7 +611,7 @@
 
             var avatar = document.createElement('div');
             avatar.className = 'avatar';
-            avatar.textContent = 'AI';
+            applyAvatarTo(avatar, 'AI');
 
             var body = document.createElement('div');
             body.className = 'bubble';
