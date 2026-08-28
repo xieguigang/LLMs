@@ -186,7 +186,7 @@ Public Class MemoryPersistsStorage
         Try
             Dim lines As New List(Of String)
 
-            For Each msg In msgs
+            For Each msg As ChatMessage In msgs
                 If msg Is Nothing Then
                     Continue For
                 End If
@@ -230,7 +230,7 @@ Public Class MemoryPersistsStorage
                 End If
 
                 Try
-                    Dim msg As ChatMessage = LoadJsonFile(Of ChatMessage)(file:=line, simpleDict:=True)
+                    Dim msg As ChatMessage = line.LoadJSON(Of ChatMessage)
 
                     If msg IsNot Nothing Then
                         _archived.Add(msg)
