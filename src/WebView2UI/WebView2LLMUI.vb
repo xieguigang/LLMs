@@ -46,6 +46,8 @@ Public Class WebView2LLMUI
         End Set
     End Property
 
+    Public Event UIInitialized()
+
     ''' <summary>
     ''' bind a <see cref="LLMClient"/> instance as the backend of this chat control. the response
     ''' stream hook will be enabled so that the think/output tokens can be pushed to the web ui.
@@ -277,5 +279,7 @@ Public Class WebView2LLMUI
         End If
 
         Call ApplyAvatar()
+
+        RaiseEvent UIInitialized()
     End Sub
 End Class
