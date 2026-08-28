@@ -29,6 +29,23 @@ Public Class WebView2LLMUI
         End Get
     End Property
 
+    Dim _avatar As String
+
+    ''' <summary>
+    ''' the AI avatar image source that displayed in the web html ui: an url or a data uri string.
+    ''' set this property to Nothing (or an empty string) to restore the default 'AI' text avatar.
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property avatar As String
+        Get
+            Return _avatar
+        End Get
+        Set(value As String)
+            _avatar = value
+            Call ApplyAvatar()
+        End Set
+    End Property
+
     ''' <summary>
     ''' bind a <see cref="LLMClient"/> instance as the backend of this chat control. the response
     ''' stream hook will be enabled so that the think/output tokens can be pushed to the web ui.
@@ -218,6 +235,25 @@ Public Class WebView2LLMUI
         Await WebView21.ExecuteScriptAsync($"set_file_reference({json});")
     End Function
 
+    ''' <summary>
+    ''' push the current <see cref="avatar"/> image source to the web html ui, the script call is
+    ''' marshaled to the ui thread to keep CoreWebView2 happy. when the webview is not ready yet the
+    ''' value is just kept and will be applied again on navigation completed.
+    ''' </summary>
+    Private Sub ApplyAvatar()
+        If Not webViewInitialized Then
+            Return
+        End If
+
+        Dim json = JsonSerializer.Serialize(If(_avatar, ""))
+
+        If WebView21.InvokeRequired Then
+            Call WebView21.Invoke(Sub() WebView21.ExecuteScriptAsync($"set_avatar({json});"))
+        Else
+            Call WebView21.ExecuteScriptAsync($"set_avatar({json});")
+        End If
+    End Sub
+
     Private Async Sub WebView2LLMUI_Load(sender As Object, e As EventArgs) Handles Me.Load
         Await WebViewLoader.Init(WebView21)
     End Sub
@@ -239,5 +275,7 @@ Public Class WebView2LLMUI
         If Not file_ref.StringEmpty(, True) Then
             Await SetFileReference()
         End If
+
+        Call ApplyAvatar()
     End Sub
 End Class
