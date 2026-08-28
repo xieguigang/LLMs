@@ -215,6 +215,15 @@
             display: block;
         }
 
+        /* 设置了图片后移除默认的蓝色渐变背景（以及蓝色光晕），
+           避免透明底的 logo/avatar 叠加在蓝色底上显得脏；清除图片后恢复原样式 */
+        .avatar.has-image,
+        .logo.has-image,
+        .welcome-logo.has-image {
+            background: none;
+            box-shadow: none;
+        }
+
         .bubble {
             max-width: 78%;
             padding: 12px 14px;
@@ -552,12 +561,14 @@
         }
 
         /**
-         * 渲染单个图片容器：若给定了图片地址（url 或 data uri）则显示图片，否则回退为文字占位。
+         * 渲染单个图片容器：若给定了图片地址（url 或 data uri）则显示图片并移除默认的蓝色背景，
+         * 否则移除图片、恢复蓝色背景与文字占位。
          */
         function applyImageTo(el, url, fallbackText) {
             if (!el) return;
 
             if (url) {
+                el.classList.add('has-image');
                 el.innerHTML = '';
 
                 var img = document.createElement('img');
@@ -566,6 +577,7 @@
 
                 el.appendChild(img);
             } else {
+                el.classList.remove('has-image');
                 el.textContent = fallbackText;
             }
         }
