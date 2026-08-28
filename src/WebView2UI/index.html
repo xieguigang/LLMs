@@ -72,6 +72,7 @@
             justify-content: center;
             font-weight: 600;
             font-size: 14px;
+            overflow: hidden;
         }
 
         .title {
@@ -150,6 +151,7 @@
             font-size: 24px;
             font-weight: 600;
             box-shadow: 0 8px 24px rgba(37, 99, 235, .25);
+            overflow: hidden;
         }
 
         .welcome h1 {
@@ -457,6 +459,7 @@
         var busy = false;
         var current = null; // 当前正在流式渲染的助手气泡状态
         var avatarUrl = ''; // AI 头像图片地址（url 或 data uri），为空时回退为 'AI' 文字头像
+        var logoUrl = '';   // 顶栏 logo 图片地址（url 或 data uri），为空时回退为 'AI' 文字
 
         var messages = document.getElementById('messages');
         var input = document.getElementById('input');
@@ -549,17 +552,16 @@
         }
 
         /**
-         * 渲染单个 AI 头像容器：若设置了 avatarUrl 则显示图片（url 或 data uri），
-         * 否则回退为默认的 'AI' 文字头像。
+         * 渲染单个图片容器：若给定了图片地址（url 或 data uri）则显示图片，否则回退为文字占位。
          */
-        function applyAvatarTo(el, fallbackText) {
+        function applyImageTo(el, url, fallbackText) {
             if (!el) return;
 
-            if (avatarUrl) {
+            if (url) {
                 el.innerHTML = '';
 
                 var img = document.createElement('img');
-                img.src = avatarUrl;
+                img.src = url;
                 img.alt = 'AI';
 
                 el.appendChild(img);
@@ -569,19 +571,35 @@
         }
 
         /**
+         * 渲染 AI 头像容器（欢迎页 logo 与助手消息气泡头像），图片地址取自 avatarUrl。
+         */
+        function applyAvatarTo(el, fallbackText) {
+            applyImageTo(el, avatarUrl, fallbackText);
+        }
+
+        /**
          * 设置 AI 头像（由 WinForm 端 avatar 属性调用），url 支持 http(s) 链接或 data uri 字符串；
-         * 传入空值则恢复默认的 'AI' 文字头像。
+         * 传入空值则恢复默认的 'AI' 文字头像。仅作用于欢迎页 logo 与助手消息气泡头像，不影响顶栏 logo。
          */
         function set_avatar(url) {
             avatarUrl = url || '';
 
-            applyAvatarTo(document.getElementById('topLogo'), 'AI');
-            applyAvatarTo(document.getElementById('welcomeLogo'), 'AI');
+            applyImageTo(document.getElementById('welcomeLogo'), avatarUrl, 'AI');
 
             var nodes = document.querySelectorAll('.avatar');
             for (var i = 0; i < nodes.length; i++) {
-                applyAvatarTo(nodes[i], 'AI');
+                applyImageTo(nodes[i], avatarUrl, 'AI');
             }
+        }
+
+        /**
+         * 设置顶栏 logo（由 WinForm 端 logo 属性调用），url 支持 http(s) 链接或 data uri 字符串；
+         * 传入空值则恢复默认的 'AI' 文字 logo。仅作用于顶栏 logo，与 avatar 相互独立。
+         */
+        function set_logo(url) {
+            logoUrl = url || '';
+
+            applyImageTo(document.getElementById('topLogo'), logoUrl, 'AI');
         }
 
         function addUserMessage(text) {
