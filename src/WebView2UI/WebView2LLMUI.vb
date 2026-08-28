@@ -297,7 +297,8 @@ Public Class WebView2LLMUI
             Await SetFileReference()
         End If
 
-        Call ApplyAvatar()
+        Call ApplyImage("set_avatar", _avatar)
+        Call ApplyImage("set_logo", _logo)
 
         RaiseEvent UIInitialized()
     End Sub
