@@ -30,9 +30,12 @@ Public Class WebView2LLMUI
     End Property
 
     Dim _avatar As String
+    Dim _logo As String
 
     ''' <summary>
     ''' the AI avatar image source that displayed in the web html ui: an url or a data uri string.
+    ''' this only affects the welcome logo and the assistant message bubble avatar, the topbar logo
+    ''' is configured via the <see cref="logo"/> property.
     ''' set this property to Nothing (or an empty string) to restore the default 'AI' text avatar.
     ''' </summary>
     ''' <returns></returns>
@@ -42,7 +45,23 @@ Public Class WebView2LLMUI
         End Get
         Set(value As String)
             _avatar = value
-            Call ApplyAvatar()
+            Call ApplyImage("set_avatar", _avatar)
+        End Set
+    End Property
+
+    ''' <summary>
+    ''' the topbar logo image source that displayed in the web html ui: an url or a data uri string.
+    ''' this property is independent from the <see cref="avatar"/> property.
+    ''' set this property to Nothing (or an empty string) to restore the default 'AI' text logo.
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property logo As String
+        Get
+            Return _logo
+        End Get
+        Set(value As String)
+            _logo = value
+            Call ApplyImage("set_logo", _logo)
         End Set
     End Property
 
@@ -238,21 +257,21 @@ Public Class WebView2LLMUI
     End Function
 
     ''' <summary>
-    ''' push the current <see cref="avatar"/> image source to the web html ui, the script call is
-    ''' marshaled to the ui thread to keep CoreWebView2 happy. when the webview is not ready yet the
-    ''' value is just kept and will be applied again on navigation completed.
+    ''' push an image source (an url or a data uri string) to the web html ui via the given javascript
+    ''' setter function, the script call is marshaled to the ui thread to keep CoreWebView2 happy. when
+    ''' the webview is not ready yet the value is just kept and will be applied again on navigation completed.
     ''' </summary>
-    Private Sub ApplyAvatar()
+    Private Sub ApplyImage(scriptFunc As String, value As String)
         If Not webViewInitialized Then
             Return
         End If
 
-        Dim json = JsonSerializer.Serialize(If(_avatar, ""))
+        Dim json = JsonSerializer.Serialize(If(value, ""))
 
         If WebView21.InvokeRequired Then
-            Call WebView21.Invoke(Sub() WebView21.ExecuteScriptAsync($"set_avatar({json});"))
+            Call WebView21.Invoke(Sub() WebView21.ExecuteScriptAsync($"{scriptFunc}({json});"))
         Else
-            Call WebView21.ExecuteScriptAsync($"set_avatar({json});")
+            Call WebView21.ExecuteScriptAsync($"{scriptFunc}({json});")
         End If
     End Sub
 
