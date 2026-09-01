@@ -18,6 +18,16 @@ Public Class OllamaProvider : Implements ILLMProvider
         End Get
     End Property
 
+    ''' <summary>
+    ''' Ollama 本地推理不提供 KV 缓存命中统计，因此始终为 False
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property SupportsCacheStats As Boolean Implements ILLMProvider.SupportsCacheStats
+        Get
+            Return False
+        End Get
+    End Property
+
     Public Sub New(Optional server As String = "127.0.0.1:11434")
         _server = server
     End Sub
@@ -121,6 +131,14 @@ Public Class OllamaProvider : Implements ILLMProvider
                         })
                     Next
                 End If
+
+                ' Ollama 在 done 帧给出本轮的输入/输出 token 数，
+                ' 但没有 KV 缓存命中的概念，缓存字段保持为空
+                chunk.Usage = New ChatUsage With {
+                    .PromptTokens = If(result.prompt_eval_count, 0L),
+                    .CompletionTokens = If(result.eval_count, 0L),
+                    .Raw = result
+                }
 
                 Yield chunk
                 If chunk.IsDone Then Exit While

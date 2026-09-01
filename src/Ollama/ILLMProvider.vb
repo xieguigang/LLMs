@@ -10,6 +10,13 @@ Public Interface ILLMProvider
     ReadOnly Property ApiEndpoint As String
 
     ''' <summary>
+    ''' 当前后端是否提供 KV 缓存命中统计。
+    ''' 支持 usage 中返回缓存命中/未命中 token 的后端（例如 DeepSeek）应返回 True；
+    ''' 无此概念的后端（例如 Ollama 本地推理）返回 False，此时缓存命中率一律为 0。
+    ''' </summary>
+    ReadOnly Property SupportsCacheStats As Boolean
+
+    ''' <summary>
     ''' 异步流式请求
     ''' </summary>
     ''' <param name="options">统一的请求参数</param>

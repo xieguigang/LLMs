@@ -21,10 +21,34 @@ Public Class LLMClient : Implements IDisposable
     Dim _caller As FunctionCaller
     Dim _calls As New List(Of FunctionCall)
 
+    ''' <summary>
+    ''' 每次请求的用量明细快照，按请求顺序追加；超过 <see cref="MaxUsageLogSize"/> 后丢弃最旧的记录
+    ''' </summary>
+    Dim _usageLog As New List(Of ChatUsageRecord)
+    ' 会话累计的 token 用量（不做加锁，与 _calls 一致，并发调用下统计不保证精确）
+    Dim _totalPromptTokens As Long
+    Dim _totalCompletionTokens As Long
+    Dim _totalCacheHit As Long
+    Dim _totalCacheMiss As Long
+    Dim _lastUsage As ChatUsage
+
+    ''' <summary>
+    ''' 用量明细列表的容量上限，避免长时间 Agent 会话导致无界增长
+    ''' </summary>
+    Public Const MaxUsageLogSize As Integer = 1000
+
     Private disposedValue As Boolean
 
     Public Property temperature As Double = 0.1
     Public Property tools As List(Of FunctionTool)
+
+    ''' <summary>
+    ''' 是否在流式请求中向后端索取 token 用量统计（默认 True）。
+    ''' 关闭后 <see cref="cache_hit_rate"/> 等统计将不再更新，可用于兼容不支持 
+    ''' <c>stream_options</c> 扩展参数的 OpenAI 兼容端点。
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property enable_usage_stats As Boolean = True
 
     ''' <summary>
     ''' Max tool call rounds
@@ -53,6 +77,131 @@ Public Class LLMClient : Implements IDisposable
             Return _context.EstimatedTokens
         End Get
     End Property
+
+    ''' <summary>
+    ''' 当前后端是否提供 KV 缓存命中统计。
+    ''' DeepSeek 等 OpenAI 兼容后端为 True，Ollama 本地后端为 False（此时命中率恒为 0）。
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property cache_supported As Boolean
+        Get
+            Return _provider.SupportsCacheStats
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 会话累计的 KV 缓存命中率（0~1）：累计命中 token 数 / (累计命中 + 累计未命中)。
+    ''' 后端不支持缓存统计或尚无统计数据时返回 0。
+    ''' </summary>
+    ''' <returns></returns>
+    ''' <remarks>
+    ''' 统计口径为整个会话（<see cref="LLMClient"/> 实例生命周期）内所有请求之和，
+    ''' 包含工具调用轮次与网络重试产生的请求；如需清零请调用 <see cref="ResetCacheStats"/>。
+    ''' </remarks>
+    Public ReadOnly Property cache_hit_rate As Double
+        Get
+            Return CacheUsageMath.HitRate(_totalCacheHit, _totalCacheMiss)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 最近一次请求的 KV 缓存命中率（0~1）；尚无统计数据或后端不支持时返回 0
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property last_cache_hit_rate As Double
+        Get
+            If _lastUsage Is Nothing Then
+                Return 0.0R
+            Else
+                Return _lastUsage.HitRate
+            End If
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 会话累计的缓存命中 token 数
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property cache_hit_tokens As Long
+        Get
+            Return _totalCacheHit
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 会话累计的缓存未命中 token 数
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property cache_miss_tokens As Long
+        Get
+            Return _totalCacheMiss
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 最近一次请求的缓存命中 token 数；无数据时返回 0
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property last_cache_hit_tokens As Long
+        Get
+            Return If(_lastUsage IsNot Nothing AndAlso _lastUsage.CacheHitTokens.HasValue, _lastUsage.CacheHitTokens.Value, 0L)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 最近一次请求的缓存未命中 token 数；无数据时返回 0
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property last_cache_miss_tokens As Long
+        Get
+            Return If(_lastUsage IsNot Nothing AndAlso _lastUsage.CacheMissTokens.HasValue, _lastUsage.CacheMissTokens.Value, 0L)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 会话累计的输入 token 数（prompt tokens）
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property prompt_tokens As Long
+        Get
+            Return _totalPromptTokens
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 会话累计的输出 token 数（completion tokens）
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property completion_tokens As Long
+        Get
+            Return _totalCompletionTokens
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 按时间顺序记录的每次请求用量明细快照（返回副本）
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property cache_usage_log As ChatUsageRecord()
+        Get
+            Return _usageLog.ToArray()
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 清零会话累计的用量统计与明细列表，不影响对话上下文记忆
+    ''' </summary>
+    ''' <returns>当前客户端实例，便于链式调用</returns>
+    Public Function ResetCacheStats() As LLMClient
+        _usageLog.Clear()
+        _lastUsage = Nothing
+        _totalPromptTokens = 0
+        _totalCompletionTokens = 0
+        _totalCacheHit = 0
+        _totalCacheMiss = 0
+
+        Return Me
+    End Function
 
     ''' <summary>
     ''' system message to the LLMs AI
@@ -189,7 +338,8 @@ Public Class LLMClient : Implements IDisposable
             .Model = _model,
             .Messages = BuildRequestMessages(If(_preserveMemory, Nothing, newUserMsg)),
             .Tools = Me.tools,
-            .Temperature = Me.temperature
+            .Temperature = Me.temperature,
+            .StreamUsage = Me.enable_usage_stats
         }
         Dim currentReq As ChatRequestOptions = reqOptions
         Dim fullThink As New StringBuilder
@@ -258,6 +408,12 @@ Public Class LLMClient : Implements IDisposable
             ' 收集 Tool Calls
             If chunk.ToolCalls IsNot Nothing Then
                 toolCallsToExecute.AddRange(chunk.ToolCalls)
+            End If
+
+            ' 用量统计由 provider 统一挂载在结束帧上，必须早于下面的 IsDone 跳出判断，
+            ' 否则会漏掉本次请求的 usage 数据
+            If chunk.Usage IsNot Nothing Then
+                Call RecordUsage(chunk.Usage)
             End If
 
             If chunk.IsDone Then
@@ -382,6 +538,28 @@ exec:
 
         Return Nothing
     End Function
+
+    ''' <summary>
+    ''' 累计一次请求的 token 用量数据并追加明细快照
+    ''' </summary>
+    ''' <param name="usage">provider 归一化后的用量数据</param>
+    Private Sub RecordUsage(usage As ChatUsage)
+        _lastUsage = usage
+        _totalPromptTokens += usage.PromptTokens
+        _totalCompletionTokens += usage.CompletionTokens
+
+        ' 后端未提供缓存统计时不做累加，命中率保持为 0
+        If usage.HasCacheStats Then
+            _totalCacheHit += usage.CacheHitTokens.Value
+            _totalCacheMiss += usage.CacheMissTokens.Value
+        End If
+
+        Call _usageLog.Add(ChatUsageRecord.Create(usage, _model))
+
+        If _usageLog.Count > MaxUsageLogSize Then
+            Call _usageLog.RemoveRange(0, _usageLog.Count - MaxUsageLogSize)
+        End If
+    End Sub
 
     ''' <summary>
     ''' get the function calls and then clear the function calls history temp cache list
