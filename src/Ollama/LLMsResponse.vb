@@ -18,6 +18,7 @@ Public Class LLMsResponse
     ''' </summary>
     ''' <returns></returns>
     Public Property output As String
+    Public Property usage As ChatUsage
 
     Public Const who_are_you = "<think>
 

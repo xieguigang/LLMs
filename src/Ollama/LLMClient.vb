@@ -35,7 +35,7 @@ Public Class LLMClient : Implements IDisposable
     ''' <summary>
     ''' 用量明细列表的容量上限，避免长时间 Agent 会话导致无界增长
     ''' </summary>
-    Public Const MaxUsageLogSize As Integer = 1000
+    Public Const MaxUsageLogSize As Integer = 10000
 
     Private disposedValue As Boolean
 
@@ -500,7 +500,8 @@ Public Class LLMClient : Implements IDisposable
 
             Return New LLMsResponse With {
                 .think = fullThink.ToString().Trim(),
-                .output = fullOutput.ToString().Trim()
+                .output = fullOutput.ToString().Trim(),
+                .usage = _lastUsage
             }
         End If
 exec:
