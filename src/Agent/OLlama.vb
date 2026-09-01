@@ -49,8 +49,8 @@ Module OLlamaDemo
     <ExportAPI("setup_global_hook")>
     Public Function setup_global_hook(ollama As LLMClient) As Object
         Call LLMs.HookOllama(
-            chat:=Function(prompt)
-                      Dim msg = ollama.Chat(prompt).GetAwaiter.GetResult
+            chat:=Async Function(prompt) As Task(Of String)
+                      Dim msg = Await ollama.Chat(prompt)
                       Dim text As String = msg?.output
 
                       Return text

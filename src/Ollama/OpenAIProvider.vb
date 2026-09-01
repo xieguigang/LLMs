@@ -1,4 +1,5 @@
-﻿Imports System.IO
+﻿Imports System.Globalization
+Imports System.IO
 Imports System.Net.Http
 Imports System.Net.Http.Headers
 Imports System.Text
@@ -290,8 +291,15 @@ Public Class OpenAIProvider : Implements ILLMProvider
         Dim text As String = GetString(obj(key)).Trim(""""c)
         Dim value As Long
 
-        If Long.TryParse(text, value) Then
+        If Long.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, value) Then
             Return value
+        End If
+
+        ' 少数兼容端点会把整数字段序列化为 1234.0 之类的形式
+        Dim d As Decimal
+
+        If Decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, d) Then
+            Return CLng(d)
         Else
             Return Nothing
         End If

@@ -44,16 +44,6 @@
       <BuildType Solution="Docker|*" Project="Debug" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>
-    <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data_science/NLP/NLP.NET.vbproj">
-      <BuildType Solution="CFD_win32|*" Project="nuget_release" />
-      <BuildType Solution="Docker|*" Project="Debug" />
-      <BuildType Solution="gcmodeller_desktop|*" Project="Debug" />
-      <BuildType Solution="LipidSearch|*" Project="Debug" />
-      <BuildType Solution="mzkit|*" Project="mzkit_win32" />
-      <BuildType Solution="NPSearch|*" Project="Debug" />
-      <BuildType Solution="PlantMAT|*" Project="Debug" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/Microsoft.VisualBasic.Core/src/Core.vbproj">
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
@@ -69,6 +59,16 @@
       <BuildType Solution="mzkit|*" Project="Debug" />
       <BuildType Solution="NPSearch|*" Project="LipidSearch" />
       <BuildType Solution="PlantMAT|*" Project="LipidSearch" />
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/nlp/NLP/NLP.NET.vbproj">
+      <BuildType Solution="CFD_win32|*" Project="Rsharp_app_release" />
+      <BuildType Solution="Docker|*" Project="Release" />
+      <BuildType Solution="gcmodeller_desktop|*" Project="nuget_release" />
+      <BuildType Solution="LipidSearch|*" Project="nuget_release" />
+      <BuildType Solution="mzkit|*" Project="Debug" />
+      <BuildType Solution="NPSearch|*" Project="Rsharp_app_release" />
+      <BuildType Solution="PlantMAT|*" Project="Rsharp_app_release" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>
     <Project Path="../../graphQL/src/mysqli/LibMySQL/LibMySQL.vbproj">
