@@ -10,6 +10,10 @@ Public Class LLMConfig
         Return New LLMClient(LLMUrl.Create(provider, apikey:=key), model)
     End Function
 
+    Public Sub SaveDefault()
+        Call Save(defaultConfig)
+    End Sub
+
     Public Sub Save(ini As String)
         Using inifile As New IniFile(ini)
             Dim data = inifile.OpenSection("llm")
