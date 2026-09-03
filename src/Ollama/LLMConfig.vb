@@ -32,4 +32,14 @@ Public Class LLMConfig
         Return llm
     End Function
 
+    Shared ReadOnly defaultConfig As String = App.ProductProgramData & "/llm.ini"
+
+    Public Shared Function LoadDefault() As LLMConfig
+        If Not defaultConfig.FileExists Then
+            Call New LLMConfig().Save(defaultConfig)
+        End If
+
+        Return Load(defaultConfig)
+    End Function
+
 End Class
