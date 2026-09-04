@@ -17,6 +17,12 @@ Public Class FileReference
         End Get
     End Property
 
+    Public Overridable ReadOnly Property id As String
+        Get
+            Return path.GetHashCode.ToString
+        End Get
+    End Property
+
     Public Overridable Function Available() As Boolean
         Return path.FileExists
     End Function
@@ -30,7 +36,7 @@ Public Class FileReference
         Dim lines As String() = (Await ResolveFileText()).LineTokens
         Dim len As Integer = lines.Length
 
-        Call sb.AppendLine($"<attached-file name=""{path.FileName}"" path=""{path.GetFullPath}"" type=""{type.MIMEType}"">")
+        Call sb.AppendLine($"<attached-file id=""{id}"" name=""{path.FileName}"" path=""{path.GetFullPath}"" type=""{type.MIMEType}"">")
 
         If len > topN Then
             Call sb.AppendLine($"--- 文件大小： {size}")
@@ -52,6 +58,12 @@ Public Class MemoryReference : Inherits FileReference
     Public Overrides ReadOnly Property size As String
         Get
             Return "[#in-memory-data]"
+        End Get
+    End Property
+
+    Public Overrides ReadOnly Property id As String
+        Get
+            Return memoryHandle.GetHashCode.ToString
         End Get
     End Property
 
