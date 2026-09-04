@@ -213,7 +213,7 @@ Public Class LLMHost
     ''' </summary>
     ''' <returns></returns>
     Public Function GetFileReferences() As String
-        Return host.GetUsageStatsJson(Nothing)
+        Return host.GetFileReferencesJson()
     End Function
 
     ''' <summary>
