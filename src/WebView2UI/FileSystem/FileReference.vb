@@ -12,7 +12,6 @@ Public Class FileReference
     ''' 该标识与写进提示词 XML 中的 <see cref="id"/> 相互独立，不受文件路径变化的影响，
     ''' 主要用于网页端删除/查看某个具体附件时的定位。
     ''' </summary>
-    ''' <returns></returns>
     Public ReadOnly Property uid As String = Guid.NewGuid().ToString("N")
 
     Public Property path As String
@@ -49,7 +48,6 @@ Public Class FileReference
     ''' <summary>
     ''' 界面预览时允许读取的最大字符数，避免把超大文件整体读进内存
     ''' </summary>
-    ''' <returns></returns>
     Public Const PreviewMaxChars As Integer = 200000
 
     Public Overridable Function Available() As Boolean

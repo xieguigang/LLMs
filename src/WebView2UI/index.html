@@ -395,13 +395,44 @@
             box-shadow: 0 2px 8px rgba(220, 38, 38, .3);
         }
 
+        .status.clickable {
+            cursor: pointer;
+            user-select: none;
+            transition: all .18s ease;
+        }
+
+        .status.clickable:hover {
+            transform: translateY(-1px);
+            background: rgba(37, 99, 235, .12);
+            color: var(--primary);
+        }
+
+        .status.cache-on {
+            color: var(--success);
+            background: rgba(22, 163, 74, .12);
+        }
+
+        .status.cache-off {
+            color: var(--muted);
+        }
+
+        /* ---------- 会话附件区 ---------- */
+
+        .file-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px 0;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+        }
+
         .file-refs {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            padding: 8px 16px 0;
-            background: var(--panel);
-            border-top: 1px solid var(--border);
+            flex: 1;
+            min-width: 0;
         }
 
         .file-refs:empty {
@@ -412,20 +443,300 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
+            padding: 4px 8px 4px 10px;
             border-radius: 999px;
             background: rgba(37, 99, 235, .08);
             border: 1px solid rgba(37, 99, 235, .2);
             color: var(--primary);
             font-size: 12px;
-            max-width: 280px;
+            max-width: 320px;
             white-space: nowrap;
             overflow: hidden;
-            text-overflow: ellipsis;
+            animation: chipIn .18s ease;
+        }
+
+        @keyframes chipIn {
+            from {
+                opacity: 0;
+                transform: scale(.94);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
         .file-chip .file-icon {
             font-size: 12px;
+            flex: 0 0 auto;
+        }
+
+        .file-chip .file-name {
+            color: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-bottom: 1px dashed transparent;
+            transition: border-color .15s;
+        }
+
+        .file-chip .file-name:hover {
+            border-bottom-color: currentColor;
+        }
+
+        .file-chip .file-remove {
+            flex: 0 0 auto;
+            width: 16px;
+            height: 16px;
+            line-height: 14px;
+            text-align: center;
+            border-radius: 50%;
+            font-size: 13px;
+            color: var(--muted);
+            text-decoration: none;
+            transition: all .15s;
+        }
+
+        .file-chip .file-remove:hover {
+            background: rgba(220, 38, 38, .12);
+            color: var(--danger);
+        }
+
+        .file-chip.missing {
+            background: var(--think-bg);
+            border-color: var(--border);
+            color: var(--muted);
+        }
+
+        .file-chip.missing .file-name {
+            cursor: not-allowed;
+        }
+
+        .file-add-btn {
+            flex: 0 0 auto;
+            border: 1px dashed var(--border);
+            background: transparent;
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .file-add-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(37, 99, 235, .06);
+        }
+
+        /* ---------- 模态框 ---------- */
+
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .45);
+            backdrop-filter: blur(3px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity .2s ease;
+        }
+
+        .modal-mask.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal {
+            width: min(760px, 88vw);
+            max-height: 80vh;
+            background: var(--panel);
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: scale(.96);
+            transition: transform .2s ease;
+        }
+
+        .modal-mask.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            border: none;
+            background: transparent;
+            font-size: 20px;
+            line-height: 1;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 2px 8px;
+            transition: all .15s;
+        }
+
+        .modal-close:hover {
+            background: var(--think-bg);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 16px 18px 18px;
+            overflow: auto;
+        }
+
+        .modal-tip {
+            font-size: 12px;
+            color: var(--muted);
+            background: var(--think-bg);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 10px;
+        }
+
+        .modal-empty {
+            color: var(--muted);
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, #FFFFFF, #F9FAFB);
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--success);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin: 4px 0 8px;
+        }
+
+        .table-wrap {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            max-height: 280px;
+            overflow: auto;
+        }
+
+        .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .usage-table th,
+        .usage-table td {
+            padding: 6px 10px;
+            text-align: right;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .usage-table th:first-child,
+        .usage-table td:first-child,
+        .usage-table th:nth-child(2),
+        .usage-table td:nth-child(2) {
+            text-align: left;
+        }
+
+        .usage-table thead th {
+            position: sticky;
+            top: 0;
+            background: var(--think-bg);
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .usage-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .file-preview {
+            margin: 0;
+            padding: 12px 14px;
+            background: #0F172A;
+            color: #E2E8F0;
+            border-radius: 10px;
+            font-family: Consolas, Menlo, monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 56vh;
+            overflow: auto;
+        }
+
+        /* ---------- 文件拖放提示 ---------- */
+
+        .drop-mask {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(37, 99, 235, .08);
+            pointer-events: none;
+        }
+
+        .drop-mask.show {
+            display: flex;
+        }
+
+        .drop-card {
+            padding: 18px 28px;
+            border-radius: 14px;
+            border: 2px dashed var(--primary);
+            background: rgba(255, 255, 255, .95);
+            color: var(--primary);
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 12px 30px rgba(37, 99, 235, .18);
         }
     </style>
 </head>
@@ -441,7 +752,8 @@
                 </div>
             </div>
             <div class="actions">
-                <span class="status" id="tokenInfo">上下文 0 / 0 tokens</span>
+                <span class="status clickable" id="tokenInfo" title="点击查看 token 用量详情">上下文 0 / 0 tokens</span>
+                <span class="status clickable cache-off" id="cacheInfo" title="点击查看 token 用量详情">KV 缓存 --</span>
                 <span class="status" id="status">空闲</span>
                 <button class="icon-btn" id="resetBtn" title="清空对话">清空</button>
             </div>
@@ -455,12 +767,29 @@
             </div>
         </main>
 
-        <div class="file-refs" id="fileRefs"></div>
+        <div class="file-bar">
+            <div class="file-refs" id="fileRefs"></div>
+            <button class="file-add-btn" id="addFileBtn" title="添加文件到会话上下文（也可以直接把文件拖入窗口）">＋ 添加文件</button>
+        </div>
 
         <footer class="composer">
             <textarea id="input" placeholder="输入消息，Enter 发送，Shift+Enter 换行…" rows="1"></textarea>
             <button id="sendBtn" class="send-btn">发送</button>
         </footer>
+    </div>
+
+    <div class="modal-mask" id="modalMask">
+        <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">详情</div>
+                <button class="modal-close" id="modalClose" title="关闭">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div class="drop-mask" id="dropMask">
+        <div class="drop-card">松开即可把文件添加到会话上下文</div>
     </div>
 
     <script type="text/javascript">
@@ -470,6 +799,13 @@
         var avatarUrl = ''; // AI 头像图片地址（url 或 data uri），为空时回退为 'AI' 文字头像
         var logoUrl = '';   // 顶栏 logo 图片地址（url 或 data uri），为空时回退为 'AI' 文字
 
+        var fileRefsData = [];   // 当前会话中的文件附件列表（由宿主整体下发）
+        var autoScroll = true;   // 用户手动上滑查看历史时暂停自动滚动
+        var flushScheduled = false; // 是否已经调度了一次流式渲染帧
+        var modalKind = null;    // 当前模态框内容类型：'usage' | 'file'
+        var modalTimer = null;   // 用量模态框的自动刷新定时器
+        var dropTimer = null;    // 拖放提示的隐藏定时器
+
         var messages = document.getElementById('messages');
         var input = document.getElementById('input');
         var sendBtn = document.getElementById('sendBtn');
@@ -477,6 +813,13 @@
         var statusEl = document.getElementById('status');
         var modelNameEl = document.getElementById('modelName');
         var welcome = document.getElementById('welcome');
+        var addFileBtn = document.getElementById('addFileBtn');
+        var tokenInfoEl = document.getElementById('tokenInfo');
+        var cacheInfoEl = document.getElementById('cacheInfo');
+        var modalMask = document.getElementById('modalMask');
+        var modalTitle = document.getElementById('modalTitle');
+        var modalBody = document.getElementById('modalBody');
+        var dropMask = document.getElementById('dropMask');
 
         /**
          * 接受来自 WinForm 宿主程序的 PostWebMessageAsJson 消息，并按 action 分发
@@ -514,14 +857,65 @@
                     resetUI();
                     break;
                 case 'token_update':
-                    updateTokenDisplay(msg.context_tokens || 0, msg.max_context_tokens || 0);
+                    updateTokenDisplay(msg);
+                    break;
+                case 'file_refs':
+                    renderFileReferences(msg.files || []);
+                    break;
+                case 'file_content':
+                    openFileContentModal(msg);
                     break;
             }
         }
 
-        function updateTokenDisplay(contextTokens, maxTokens) {
-            var tokenInfoEl = document.getElementById('tokenInfo');
-            tokenInfoEl.textContent = '上下文 ' + contextTokens + ' / ' + maxTokens + ' tokens';
+        /**
+         * 更新顶栏的上下文长度胶囊，以及 kv 缓存状态与命中率胶囊
+         */
+        function updateTokenDisplay(msg) {
+            tokenInfoEl.textContent = '上下文 ' + (msg.context_tokens || 0) + ' / ' + (msg.max_context_tokens || 0) + ' tokens';
+            updateCacheDisplay(msg);
+        }
+
+        function updateCacheDisplay(msg) {
+            var supported = !!msg.cache_supported;
+            // token_update 消息与用量统计 json 的字段组织方式不同，这里做一下兼容
+            var hitRate = msg.cache_hit_rate !== undefined ? msg.cache_hit_rate : (msg.total ? msg.total.hit_rate : 0);
+            var lastRate = msg.last_cache_hit_rate !== undefined ? msg.last_cache_hit_rate : (msg.last ? msg.last.hit_rate : 0);
+
+            cacheInfoEl.classList.toggle('cache-on', supported);
+            cacheInfoEl.classList.toggle('cache-off', !supported);
+
+            if (!supported) {
+                cacheInfoEl.textContent = 'KV 缓存 不支持';
+                cacheInfoEl.title = '当前模型后端不提供 KV 缓存统计，点击查看 token 用量详情';
+            } else {
+                cacheInfoEl.textContent = 'KV 缓存 命中率 ' + formatPercent(hitRate);
+                cacheInfoEl.title = '点击查看 token 用量详情（最近一次请求命中率 ' + formatPercent(lastRate) + '）';
+            }
+        }
+
+        /**
+         * 用量统计 json 中只包含缓存相关的汇总字段，这里取出后仅用于刷新顶栏胶囊
+         */
+        function applyCacheSummary(text) {
+            var data;
+
+            try {
+                data = JSON.parse(text || '{}');
+            } catch (e) {
+                return;
+            }
+
+            updateCacheDisplay(data);
+        }
+
+        function formatPercent(ratio) {
+            var v = Number(ratio || 0) * 100;
+            return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + '%';
+        }
+
+        function formatNumber(n) {
+            return Number(n || 0).toLocaleString('en-US');
         }
 
         function hideWelcome() {
@@ -529,35 +923,284 @@
         }
 
         /**
-         * 在输入框上方以只读 chip 形式显示当前添加的文件附件（由 WinForm 端 SetFileReference 调用）。
-         * 空文件名会被忽略；重置对话时容器会被清空。
+         * 整体重建附件区的 chip 列表：宿主中的附件发生变化（添加/移除/清空/拖放）
+         * 时会把最新的完整列表一次性下发到这里，避免逐条操作导致的闪烁与错位。
          */
-        function set_file_reference(filename) {
-            if (!filename) return;
+        function renderFileReferences(files) {
+            var box = document.getElementById('fileRefs');
 
-            var fileRefs = document.getElementById('fileRefs');
+            fileRefsData = files || [];
+            box.innerHTML = '';
 
+            for (var i = 0; i < fileRefsData.length; i++) {
+                box.appendChild(buildFileChip(fileRefsData[i]));
+            }
+        }
+
+        /**
+         * 构建单个附件 chip：文件名是一个链接（点击查看文件内容），
+         * 右侧的 × 用于把该文件从会话上下文中移除。
+         */
+        function buildFileChip(file) {
             var chip = document.createElement('span');
-            chip.className = 'file-chip';
-            chip.title = filename;
+            var viewable = file.viewable !== false;
+
+            chip.className = 'file-chip' + (viewable ? '' : ' missing');
+            chip.title = (file.path || file.name || '') + (file.size ? '  (' + file.size + ')' : '');
 
             var icon = document.createElement('span');
             icon.className = 'file-icon';
             icon.textContent = '📎';
 
-            var name = document.createElement('span');
-            name.textContent = filename;
+            var name = document.createElement('a');
+            name.className = 'file-name';
+            name.textContent = file.name || file.path || '未命名';
+            name.href = 'javascript:void(0)';
+
+            if (viewable) {
+                name.title = '点击查看文件内容';
+                name.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    callHostAsync('OpenFileReference', [file.uid]);
+                });
+            } else {
+                name.title = '文件不存在或无法访问';
+            }
+
+            var remove = document.createElement('a');
+            remove.className = 'file-remove';
+            remove.textContent = '×';
+            remove.href = 'javascript:void(0)';
+            remove.title = '从会话中移除该文件';
+            remove.addEventListener('click', function (e) {
+                e.preventDefault();
+                callHostAsync('RemoveFileReference', [file.uid]);
+            });
 
             chip.appendChild(icon);
             chip.appendChild(name);
-            fileRefs.appendChild(chip);
+            chip.appendChild(remove);
+
+            return chip;
         }
 
         /**
-         * 清空输入框上方的所有文件附件 chip（由 WinForm 端 ClearFileReference 调用）。
+         * 调用宿主 host object 上的方法：host object 的调用可能返回 Promise，
+         * 这里统一吞掉异常，避免未捕获的 Promise 错误打断界面交互。
+         */
+        function callHostAsync(method, args) {
+            if (!llm_host || typeof llm_host[method] !== 'function') return null;
+
+            try {
+                var result = llm_host[method].apply(llm_host, args || []);
+
+                if (result && typeof result.then === 'function') {
+                    result.then(function () { }, function () { });
+                }
+
+                return result;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        /**
+         * 清空输入框上方的所有文件附件 chip（保留该方法以兼容宿主的旧调用方式）。
          */
         function clear_file_reference() {
+            fileRefsData = [];
             document.getElementById('fileRefs').innerHTML = '';
+        }
+
+        /* ------------------------- 模态框 ------------------------- */
+
+        function openModal(kind, title) {
+            modalKind = kind;
+            modalTitle.textContent = title;
+            modalMask.classList.add('show');
+            clearModalTimer();
+
+            if (kind === 'usage') {
+                modalTimer = setInterval(loadUsageStats, 2000);
+            }
+        }
+
+        function closeModal() {
+            modalMask.classList.remove('show');
+            modalKind = null;
+            clearModalTimer();
+        }
+
+        function clearModalTimer() {
+            if (modalTimer) {
+                clearInterval(modalTimer);
+                modalTimer = null;
+            }
+        }
+
+        function resetModalBody() {
+            modalBody.innerHTML = '';
+        }
+
+        /**
+         * 拉取宿主的 token 用量与 kv 缓存命中统计并渲染到模态框中
+         */
+        function loadUsageStats() {
+            if (!llm_host || typeof llm_host.GetUsageStats !== 'function') {
+                modalBody.innerHTML = '<div class="modal-empty">当前无法获取用量统计数据</div>';
+                return;
+            }
+
+            try {
+                var stats = llm_host.GetUsageStats();
+
+                if (stats && typeof stats.then === 'function') {
+                    stats.then(applyUsageStats, function () {
+                        modalBody.innerHTML = '<div class="modal-empty">获取用量统计数据失败</div>';
+                    });
+                } else {
+                    applyUsageStats(stats);
+                }
+            } catch (err) {
+                modalBody.innerHTML = '<div class="modal-empty">获取用量统计数据失败</div>';
+            }
+        }
+
+        function applyUsageStats(text) {
+            var data;
+
+            try {
+                data = JSON.parse(text || '{}');
+            } catch (e) {
+                modalBody.innerHTML = '<div class="modal-empty">用量统计数据解析失败</div>';
+                return;
+            }
+
+            renderUsageStats(data);
+        }
+
+        function renderUsageStats(data) {
+            var total = data.total || {};
+            var last = data.last || {};
+            var records = data.records || [];
+
+            resetModalBody();
+
+            if (!data.model && !data.requests) {
+                modalBody.innerHTML = '<div class="modal-empty">当前会话还没有产生任何请求</div>';
+                return;
+            }
+
+            var head = document.createElement('div');
+            head.className = 'modal-tip';
+            head.textContent = '模型 ' + (data.model || '-')
+                + ' · 上下文 ' + (data.context_tokens || 0) + ' / ' + (data.max_context_tokens || 0)
+                + ' tokens · 已完成请求 ' + (data.requests || 0) + ' 次'
+                + (data.cache_supported ? '' : ' · 该后端不提供 KV 缓存统计');
+            modalBody.appendChild(head);
+
+            var grid = document.createElement('div');
+            grid.className = 'stat-grid';
+
+            grid.appendChild(statCard('累计输入 tokens', formatNumber(total.prompt_tokens)));
+            grid.appendChild(statCard('累计输出 tokens', formatNumber(total.completion_tokens)));
+            grid.appendChild(statCard('缓存命中 tokens', formatNumber(total.cache_hit_tokens), 'green'));
+            grid.appendChild(statCard('缓存未命中 tokens', formatNumber(total.cache_miss_tokens)));
+            grid.appendChild(statCard('会话缓存命中率', formatPercent(total.hit_rate), 'green'));
+            grid.appendChild(statCard('最近一次命中率', formatPercent(last.hit_rate)));
+
+            modalBody.appendChild(grid);
+
+            if (records.length > 0) {
+                var title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = '最近一次请求：输入 ' + formatNumber(last.prompt_tokens)
+                    + ' · 输出 ' + formatNumber(last.completion_tokens)
+                    + ' · 命中 ' + formatNumber(last.cache_hit_tokens)
+                    + ' · 未命中 ' + formatNumber(last.cache_miss_tokens);
+                modalBody.appendChild(title);
+
+                modalBody.appendChild(buildUsageTable(records));
+            }
+        }
+
+        function statCard(label, value, tone) {
+            var card = document.createElement('div');
+            card.className = 'stat-card' + (tone === 'green' ? ' green' : '');
+
+            var valueEl = document.createElement('div');
+            valueEl.className = 'stat-value';
+            valueEl.textContent = value;
+
+            var labelEl = document.createElement('div');
+            labelEl.className = 'stat-label';
+            labelEl.textContent = label;
+
+            card.appendChild(valueEl);
+            card.appendChild(labelEl);
+
+            return card;
+        }
+
+        function buildUsageTable(records) {
+            var wrap = document.createElement('div');
+            wrap.className = 'table-wrap';
+
+            var table = document.createElement('table');
+            table.className = 'usage-table';
+            table.innerHTML = '<thead><tr>'
+                + '<th>时间</th><th>模型</th><th>输入</th><th>输出</th><th>命中</th><th>未命中</th><th>命中率</th>'
+                + '</tr></thead>';
+
+            var tbody = document.createElement('tbody');
+
+            for (var i = 0; i < records.length; i++) {
+                var r = records[i];
+                var tr = document.createElement('tr');
+
+                tr.appendChild(tableCell(r.time || ''));
+                tr.appendChild(tableCell(r.model || ''));
+                tr.appendChild(tableCell(formatNumber(r.prompt_tokens)));
+                tr.appendChild(tableCell(formatNumber(r.completion_tokens)));
+                tr.appendChild(tableCell(formatNumber(r.cache_hit_tokens)));
+                tr.appendChild(tableCell(formatNumber(r.cache_miss_tokens)));
+                tr.appendChild(tableCell(formatPercent(r.hit_rate)));
+
+                tbody.appendChild(tr);
+            }
+
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+
+            return wrap;
+        }
+
+        function tableCell(text) {
+            var td = document.createElement('td');
+            td.textContent = text;
+            return td;
+        }
+
+        /**
+         * 展示文件内容预览（用于内存数据引用等没有磁盘路径、无法用外部程序打开的附件）
+         */
+        function openFileContentModal(msg) {
+            openModal('file', '文件预览：' + (msg.name || ''));
+
+            resetModalBody();
+
+            if (msg.truncated) {
+                var tip = document.createElement('div');
+                tip.className = 'modal-tip';
+                tip.textContent = '文件内容过长，这里只显示前面的一部分内容。';
+                modalBody.appendChild(tip);
+            }
+
+            var pre = document.createElement('pre');
+            pre.className = 'file-preview';
+            pre.textContent = msg.content || '';
+
+            modalBody.appendChild(pre);
         }
 
         /**
@@ -678,12 +1321,19 @@
                 thinkContent: thinkContent,
                 outputEl: output,
                 outputRaw: '',
+                pending: '',
                 hasThink: false
             };
 
             scrollToBottom();
         }
 
+        /**
+         * 追加一段流式输出：这里只把文本放进待渲染缓冲区并调度一帧渲染，
+         * 真正的 dom 更新统一在 requestAnimationFrame 中做增量追加。
+         * 早期实现是每收到一个 token 就整体重设 innerHTML，长回复时会产生 O(n^2) 的
+         * html 重新解析开销，是流式输出期间界面卡顿的重要原因之一。
+         */
         function appendToken(type, text) {
             if (!current) {
                 startAssistant();
@@ -695,10 +1345,31 @@
                 current.thinkContent.textContent += text;
             } else {
                 current.outputRaw += text;
-                renderOutput();
+                current.pending += text;
+                scheduleFlush();
+            }
+        }
+
+        function scheduleFlush() {
+            if (flushScheduled) return;
+
+            flushScheduled = true;
+            requestAnimationFrame(flushPending);
+        }
+
+        function flushPending() {
+            flushScheduled = false;
+
+            if (!current) return;
+
+            if (current.pending.length > 0) {
+                current.outputEl.appendChild(document.createTextNode(current.pending));
+                current.pending = '';
             }
 
-            scrollToBottom();
+            if (autoScroll) {
+                messages.scrollTop = messages.scrollHeight;
+            }
         }
 
         function finalizeAssistant(output, think) {
@@ -707,15 +1378,19 @@
                 return;
             }
 
-            // 用最终完整文本兜底，避免流式拼接时字符被拆分而丢失
-            if (output && output.length > current.outputRaw.length) {
-                current.outputRaw = output;
-            }
             if (think && think.length > current.thinkContent.textContent.length) {
                 current.thinkContent.textContent = think;
             }
 
-            renderOutput();
+            // 宿主返回的是经过 markdown 渲染的最终 html，这里一次性赋值即可，
+            // 流式阶段累积的纯文本仅作为兜底
+            if (output && output.length > 0) {
+                current.outputEl.innerHTML = output;
+            } else if (current.pending.length > 0) {
+                current.outputEl.appendChild(document.createTextNode(current.pending));
+            }
+
+            current.pending = '';
             current.outputEl.classList.remove('streaming');
 
             if (!current.hasThink && current.thinkContent.textContent.trim() === '') {
@@ -759,17 +1434,13 @@
             for (var i = 0; i < nodes.length; i++) {
                 nodes[i].remove();
             }
+
+            // 清空消息列表后宿主会重新下发一次完整附件列表，这里只做界面清理
+            fileRefsData = [];
             document.getElementById('fileRefs').innerHTML = '';
             welcome.style.display = '';
             current = null;
             setBusy(false);
-        }
-
-        /**
-         * 直接渲染由 WinForm 宿主端（MarkdownRender）预先转换好的 html 内容，前端不再做 markdown 解析。
-         */
-        function renderOutput() {
-            current.outputEl.innerHTML = current.outputRaw;
         }
 
         function setBusy(b) {
@@ -816,9 +1487,15 @@
             input.style.height = Math.min(input.scrollHeight, 160) + 'px';
         }
 
-        function scrollToBottom() {
+        /**
+         * 滚动到底部：用户手动向上滚动查看历史时不再强制吸底，
+         * 避免流式输出过程中把用户的阅读位置不断拉回底部。
+         */
+        function scrollToBottom(force) {
             requestAnimationFrame(function () {
-                messages.scrollTop = messages.scrollHeight;
+                if (force || autoScroll) {
+                    messages.scrollTop = messages.scrollHeight;
+                }
             });
         }
 
@@ -832,6 +1509,64 @@
 
         resetBtn.addEventListener('click', function () {
             if (llm_host) llm_host.ResetConversation();
+        });
+
+        addFileBtn.addEventListener('click', function () {
+            callHostAsync('AddFileReferences', []);
+        });
+
+        /** 顶栏的上下文与缓存胶囊都可以打开 token 用量详情 */
+        function openUsageModal() {
+            openModal('usage', 'Token 用量与 KV 缓存命中统计');
+            loadUsageStats();
+        }
+
+        tokenInfoEl.addEventListener('click', openUsageModal);
+        cacheInfoEl.addEventListener('click', openUsageModal);
+
+        document.getElementById('modalClose').addEventListener('click', closeModal);
+
+        modalMask.addEventListener('click', function (e) {
+            if (e.target === modalMask) closeModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modalMask.classList.contains('show')) {
+                closeModal();
+            }
+        });
+
+        /** 用户上滑查看历史时暂停自动滚动，回到底部后恢复 */
+        messages.addEventListener('scroll', function () {
+            var distance = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+            autoScroll = distance < 80;
+        });
+
+        /**
+         * 文件拖放提示：这里刻意不调用 preventDefault，
+         * 宿主会拦截由拖放产生的 file:// 导航并从中取得被拖入的文件路径。
+         */
+        function showDropMask() {
+            dropMask.classList.add('show');
+
+            if (dropTimer) clearTimeout(dropTimer);
+            // 拖出窗口时不一定能收到 dragleave，这里用超时兜底隐藏提示
+            dropTimer = setTimeout(hideDropMask, 300);
+        }
+
+        function hideDropMask() {
+            dropMask.classList.remove('show');
+
+            if (dropTimer) {
+                clearTimeout(dropTimer);
+                dropTimer = null;
+            }
+        }
+
+        window.addEventListener('dragover', showDropMask);
+        window.addEventListener('dragend', hideDropMask);
+        window.addEventListener('drop', function () {
+            setTimeout(hideDropMask, 400);
         });
 
         input.addEventListener('input', autoResize);
@@ -869,12 +1604,34 @@
                 try {
                     var c = llm_host.ContextTokens;
                     var mx = llm_host.MaxContextTokens;
+
                     if (c && typeof c.then === 'function') {
                         Promise.all([c, mx]).then(function (vals) {
-                            updateTokenDisplay(vals[0] || '0', vals[1] || '0');
+                            updateTokenDisplay({
+                                context_tokens: vals[0] || '0',
+                                max_context_tokens: vals[1] || '0'
+                            });
                         });
                     } else {
-                        updateTokenDisplay(c || '0', mx || '0');
+                        updateTokenDisplay({
+                            context_tokens: c || '0',
+                            max_context_tokens: mx || '0'
+                        });
+                    }
+                } catch (e) { }
+            }
+
+            // 拉取一次完整的用量统计，让顶栏的缓存命中率在初始化后就能正确显示
+            if (llm_host && typeof llm_host.GetUsageStats === 'function') {
+                try {
+                    var stats = llm_host.GetUsageStats();
+
+                    if (stats && typeof stats.then === 'function') {
+                        stats.then(function (text) {
+                            applyCacheSummary(text);
+                        }, function () { });
+                    } else {
+                        applyCacheSummary(stats);
                     }
                 } catch (e) { }
             }

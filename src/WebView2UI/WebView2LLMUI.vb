@@ -101,7 +101,6 @@ Public Class WebView2LLMUI
     ''' <summary>
     ''' token 合批推送的默认时间间隔（毫秒）
     ''' </summary>
-    ''' <returns></returns>
     Public Const DefaultTokenFlushInterval As Integer = 60
 
     ''' <summary>
@@ -340,6 +339,7 @@ Public Class WebView2LLMUI
                 .cache_miss_tokens = r.CacheMissTokens,
                 .hit_rate = r.HitRate
             }) _
+            .Cast(Of Object)() _
             .ToArray()
 
         Dim stats = New With {
@@ -371,7 +371,6 @@ Public Class WebView2LLMUI
     ''' <summary>
     ''' 用量详情模态框中最多展示的最近请求明细条数
     ''' </summary>
-    ''' <returns></returns>
     Public Const UsageLogDisplaySize As Integer = 100
 
     ''' <summary>
@@ -705,8 +704,11 @@ Public Class WebView2LLMUI
     ''' <returns></returns>
     Friend Function ShowAddFileDialog() As String()
         If InvokeRequired Then
-            Dim invoke As New Func(Of String())(AddressOf ShowAddFileDialog)
-            Return DirectCast(Invoke(invoke), String())
+            Dim selected As String() = Nothing
+
+            Call Invoke(Sub() selected = ShowAddFileDialog())
+
+            Return If(selected, New String() {})
         End If
 
         Using dialog As New OpenFileDialog With {
