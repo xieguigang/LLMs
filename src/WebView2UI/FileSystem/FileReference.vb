@@ -60,6 +60,34 @@ Public Class FileReference
         Return Await Task.FromResult(path.ReadAllText)
     End Function
 
+    ''' <summary>
+    ''' 读取用于界面预览的文本内容：为避免把超大文件整体读进内存，超过 
+    ''' <paramref name="maxChars"/> 时只读取文件头部并追加一行截断提示。
+    ''' </summary>
+    ''' <param name="maxChars">预览所允许的最大字符数</param>
+    ''' <returns></returns>
+    Public Overridable Async Function ReadPreviewText(Optional maxChars As Integer = PreviewMaxChars) As Task(Of String)
+        Return Await Task.Run(Function() ReadTextHead(maxChars))
+    End Function
+
+    Private Function ReadTextHead(maxChars As Integer) As String
+        If maxChars <= 0 Then
+            maxChars = PreviewMaxChars
+        End If
+
+        Using reader As New StreamReader(New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite), Encoding.UTF8, True)
+            Dim buffer As Char() = New Char(maxChars - 1) {}
+            Dim n As Integer = reader.Read(buffer, 0, maxChars)
+            Dim head As String = New String(buffer, 0, n)
+
+            If n >= maxChars Then
+                head = head & vbCrLf & $"... (内容过长，仅预览前 {maxChars} 个字符)"
+            End If
+
+            Return head
+        End Using
+    End Function
+
     Public Async Function GetFileContent(topN As Integer) As Task(Of String)
         Dim sb As New StringBuilder
         Dim lines As String() = (Await ResolveFileText()).LineTokens
@@ -101,12 +129,33 @@ Public Class MemoryReference : Inherits FileReference
         path = filename
     End Sub
 
+    Public Overrides ReadOnly Property onDisk As Boolean
+        Get
+            Return False
+        End Get
+    End Property
+
     Public Overrides Function Available() As Boolean
         Return memoryHandle IsNot Nothing
     End Function
 
     Public Overrides Async Function ResolveFileText() As Task(Of String)
         Return Await memoryHandle()
+    End Function
+
+    Public Overrides Async Function ReadPreviewText(Optional maxChars As Integer = PreviewMaxChars) As Task(Of String)
+        Dim text As String = Await ResolveFileText()
+
+        If maxChars <= 0 Then
+            maxChars = PreviewMaxChars
+        End If
+        If text Is Nothing Then
+            Return ""
+        ElseIf text.Length > maxChars Then
+            Return text.Substring(0, maxChars) & vbCrLf & $"... (内容过长，仅预览前 {maxChars} 个字符)"
+        Else
+            Return text
+        End If
     End Function
 
 End Class
