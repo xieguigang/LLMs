@@ -218,17 +218,16 @@ Public Class WebView2LLMUI
         Return fs.SafeQuery
     End Function
 
-    Public Async Function SetFileReferenceHandle(handle As Func(Of Task(Of String)), filename As String) As Task
-        file_ref = filename
-        file_handle = handle
+    Public Async Function AddFileReference(handle As Func(Of Task(Of String)), filename As String) As Task
+        Call fs.Add(New MemoryReference(handle, filename))
 
         If webViewInitialized Then
             Await Me.SetFileReference
         End If
     End Function
 
-    Public Async Function SetFileReference(filepath As String) As Task
-        file_ref = filepath.GetFullPath
+    Public Async Function AddFileReference(filepath As String) As Task
+        Call fs.Add(New FileReference With {.path = filepath.GetFullPath})
 
         If webViewInitialized Then
             Await Me.SetFileReference
@@ -236,19 +235,26 @@ Public Class WebView2LLMUI
     End Function
 
     Public Async Function ClearFileReference() As Task
-        file_ref = Nothing
-        file_handle = Nothing
+        Call fs.Clear()
 
         If webViewInitialized Then
             Await WebView21.ExecuteScriptAsync($"clear_file_reference();")
         End If
     End Function
 
+    ''' <summary>
+    ''' TODO: needs fixed
+    ''' </summary>
+    ''' <returns></returns>
     Private Async Function SetFileReference() As Task
-        Dim filename As String = file_ref.FileName
-        Dim json = JsonSerializer.Serialize(filename)
+        Await ClearFileReference()
 
-        Await WebView21.ExecuteScriptAsync($"set_file_reference({json});")
+        For Each file As FileReference In fs
+            Dim filename As String = file.path.FileName
+            Dim json = JsonSerializer.Serialize(filename)
+
+            Await WebView21.ExecuteScriptAsync($"set_file_reference({json});")
+        Next
     End Function
 
     ''' <summary>
