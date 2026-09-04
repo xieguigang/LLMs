@@ -206,21 +206,11 @@ Public Class WebView2LLMUI
         End If
     End Sub
 
-    Friend file_ref As String
-    Friend file_handle As Func(Of Task(Of String))
-
+    Dim fs As New List(Of FileReference)
     Dim webViewInitialized As Boolean = False
 
     Public Function SourceAvailable() As Boolean
-        Return file_ref.FileExists OrElse Not file_handle Is Nothing
-    End Function
-
-    Public Async Function ResolveFileText() As Task(Of String)
-        If file_handle Is Nothing Then
-            Return Await Task.FromResult(file_ref.ReadAllText)
-        Else
-            Return Await file_handle()
-        End If
+        Return fs.Any(Function(f) f.Available)
     End Function
 
     Public Async Function SetFileReferenceHandle(handle As Func(Of Task(Of String)), filename As String) As Task
