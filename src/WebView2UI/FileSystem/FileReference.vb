@@ -78,7 +78,8 @@ Public Class FileReference
             Dim n As Integer = reader.Read(buffer, 0, maxChars)
             Dim head As String = New String(buffer, 0, n)
 
-            If n >= maxChars Then
+            ' 只有文件确实还有剩余内容时才提示截断（正好读完时不提示）
+            If n >= maxChars AndAlso reader.Peek() >= 0 Then
                 head = head & vbCrLf & $"... (内容过长，仅预览前 {maxChars} 个字符)"
             End If
 
