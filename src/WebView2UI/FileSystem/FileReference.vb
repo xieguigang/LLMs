@@ -33,6 +33,7 @@ Public Class FileReference
         Call sb.AppendLine($"<attached-file name=""{path.FileName}"" path=""{path.GetFullPath}"" type=""{type.MIMEType}"">")
 
         If len > topN Then
+            Call sb.AppendLine($"--- 文件大小： {size}")
             Call sb.AppendLine($"--- 文件行数：{len} (在这里预览前{topN}行数据，如果需要读取文件全部数据，可以使用read_file函数来读取)")
         End If
 
@@ -46,5 +47,25 @@ End Class
 
 Public Class MemoryReference : Inherits FileReference
 
+    Dim memoryHandle As Func(Of Task(Of String))
+
+    Public Overrides ReadOnly Property size As String
+        Get
+            Return "[#in-memory-data]"
+        End Get
+    End Property
+
+    Sub New(handle As Func(Of Task(Of String)), filename As String)
+        memoryHandle = handle
+        path = filename
+    End Sub
+
+    Public Overrides Function Available() As Boolean
+        Return memoryHandle IsNot Nothing
+    End Function
+
+    Public Overrides Async Function ResolveFileText() As Task(Of String)
+        Return Await memoryHandle()
+    End Function
 
 End Class

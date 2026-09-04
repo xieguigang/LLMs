@@ -283,7 +283,7 @@ Public Class WebView2LLMUI
     Private Async Sub WebView21_NavigationCompleted(sender As Object, e As CoreWebView2NavigationCompletedEventArgs) Handles WebView21.NavigationCompleted
         webViewInitialized = True
 
-        If Not file_ref.StringEmpty(, True) Then
+        If SourceAvailable() Then
             Await SetFileReference()
         End If
 
