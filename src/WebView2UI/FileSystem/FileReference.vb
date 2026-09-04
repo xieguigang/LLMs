@@ -1,7 +1,19 @@
-﻿Imports System.Text
+﻿Imports System.IO
+Imports System.Text
 Imports Microsoft.VisualBasic.Net.Protocols.ContentTypes
 
+''' <summary>
+''' 会话上下文中的一个文件附件引用
+''' </summary>
 Public Class FileReference
+
+    ''' <summary>
+    ''' 网页界面与宿主程序之间使用的稳定唯一标识。
+    ''' 该标识与写进提示词 XML 中的 <see cref="id"/> 相互独立，不受文件路径变化的影响，
+    ''' 主要用于网页端删除/查看某个具体附件时的定位。
+    ''' </summary>
+    ''' <returns></returns>
+    Public ReadOnly Property uid As String = Guid.NewGuid().ToString("N")
 
     Public Property path As String
 
@@ -22,6 +34,23 @@ Public Class FileReference
             Return path.GetHashCode.ToString
         End Get
     End Property
+
+    ''' <summary>
+    ''' 当前引用是否指向磁盘上的真实文件；内存数据引用（<see cref="MemoryReference"/>）返回 False，
+    ''' 此时无法通过系统默认程序打开，只能以文本形式预览。
+    ''' </summary>
+    ''' <returns></returns>
+    Public Overridable ReadOnly Property onDisk As Boolean
+        Get
+            Return True
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 界面预览时允许读取的最大字符数，避免把超大文件整体读进内存
+    ''' </summary>
+    ''' <returns></returns>
+    Public Const PreviewMaxChars As Integer = 200000
 
     Public Overridable Function Available() As Boolean
         Return path.FileExists
