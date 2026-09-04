@@ -96,6 +96,7 @@ Public Class WebView2LLMUI
     ReadOnly thinkBuffer As New StringBuilder
     ReadOnly outputBuffer As New StringBuilder
     Dim tokenTimer As System.Windows.Forms.Timer
+    Dim tokenFlushActive As Boolean = False
     Dim _tokenFlushInterval As Integer = DefaultTokenFlushInterval
 
     ''' <summary>
@@ -146,6 +147,7 @@ Public Class WebView2LLMUI
         _cts = New CancellationTokenSource()
 
         ' 启动 token 合批推送定时器（定时器运行在 ui 线程上）
+        tokenFlushActive = True
         Call EnsureTokenTimer().Start()
         Call PushStart()
     End Sub
@@ -167,6 +169,7 @@ Public Class WebView2LLMUI
             Call llm_host.Clear()
         End If
 
+        tokenFlushActive = False
         Call FlushTokens()
         Call SendMessage(New With {
             .action = "reset"
@@ -192,6 +195,8 @@ Public Class WebView2LLMUI
         SyncLock tokenLock
             Call thinkBuffer.Append(token)
         End SyncLock
+
+        Call ScheduleTokenFlush()
     End Sub
 
     ''' <summary>
@@ -207,6 +212,8 @@ Public Class WebView2LLMUI
         SyncLock tokenLock
             Call outputBuffer.Append(token)
         End SyncLock
+
+        Call ScheduleTokenFlush()
     End Sub
 
     ''' <summary>
@@ -258,8 +265,40 @@ Public Class WebView2LLMUI
         Return tokenTimer
     End Function
 
+    ''' <summary>
+    ''' 确保合批定时器处于运行状态；winforms 定时器只能在 ui 线程上启动，
+    ''' 因此当该方法从后台的流式读取线程上被调用时通过 BeginInvoke 封送回 ui 线程
+    ''' </summary>
+    Private Sub ScheduleTokenFlush()
+        If tokenTimer IsNot Nothing AndAlso tokenTimer.Enabled Then
+            Return
+        End If
+        If IsDisposed OrElse Not IsHandleCreated Then
+            Return
+        End If
+
+        Call BeginInvoke(Sub()
+                             If IsDisposed Then
+                                 Return
+                             End If
+
+                             Call EnsureTokenTimer().Start()
+                         End Sub)
+    End Sub
+
     Private Sub OnTokenFlushTick(sender As Object, e As EventArgs)
         Call FlushTokens()
+
+        If tokenFlushActive Then
+            Return
+        End If
+
+        ' 流式输出已经结束，缓冲区排空之后就停掉定时器，避免留下一个空转的定时器
+        SyncLock tokenLock
+            If thinkBuffer.Length = 0 AndAlso outputBuffer.Length = 0 Then
+                Call tokenTimer.Stop()
+            End If
+        End SyncLock
     End Sub
 
     ''' <summary>
@@ -284,6 +323,8 @@ Public Class WebView2LLMUI
             .output = output,
             .think = think
         })
+
+        tokenFlushActive = False
 
         If tokenTimer IsNot Nothing Then
             Call tokenTimer.Stop()
@@ -382,6 +423,8 @@ Public Class WebView2LLMUI
             .action = "error",
             .message = err
         })
+
+        tokenFlushActive = False
 
         If tokenTimer IsNot Nothing Then
             Call tokenTimer.Stop()

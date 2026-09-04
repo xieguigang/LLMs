@@ -992,7 +992,18 @@
             if (!llm_host || typeof llm_host[method] !== 'function') return null;
 
             try {
-                var result = llm_host[method].apply(llm_host, args || []);
+                var result;
+
+                // 直接调用：host object 的代理方法在 apply 下不一定能正确绑定 this
+                if (method === 'OpenFileReference') {
+                    result = llm_host.OpenFileReference(args[0]);
+                } else if (method === 'RemoveFileReference') {
+                    result = llm_host.RemoveFileReference(args[0]);
+                } else if (method === 'AddFileReferences') {
+                    result = llm_host.AddFileReferences();
+                } else {
+                    result = llm_host[method].apply(llm_host, args || []);
+                }
 
                 if (result && typeof result.then === 'function') {
                     result.then(function () { }, function () { });
@@ -1273,7 +1284,8 @@
             body.appendChild(p);
             bubble.appendChild(body);
             messages.appendChild(bubble);
-            scrollToBottom();
+            // 发送是用户的主动操作，这里始终滚动到底部
+            scrollToBottom(true);
         }
 
         function startAssistant() {
