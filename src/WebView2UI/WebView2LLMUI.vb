@@ -1,5 +1,6 @@
 ﻿Imports System.Text.Json
 Imports System.Threading
+Imports Microsoft.VisualBasic.Linq
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Microsoft.Web.WebView2.Core
 Imports Ollama
@@ -211,6 +212,10 @@ Public Class WebView2LLMUI
 
     Public Function SourceAvailable() As Boolean
         Return fs.Any(Function(f) f.Available)
+    End Function
+
+    Public Function GetReferenceFiles() As IEnumerable(Of FileReference)
+        Return fs.SafeQuery
     End Function
 
     Public Async Function SetFileReferenceHandle(handle As Func(Of Task(Of String)), filename As String) As Task

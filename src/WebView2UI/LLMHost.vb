@@ -1,4 +1,5 @@
 ﻿Imports System.Runtime.InteropServices
+Imports System.Text
 Imports Microsoft.VisualBasic.MIME.text.markdown
 Imports Microsoft.VisualBasic.Serialization.JSON
 Imports Ollama
@@ -57,19 +58,21 @@ Public Class LLMHost
     End Property
 
     Private Async Function AttachFile(prompt_text As String, top As Integer) As Task(Of String)
-        Dim text As String = Await host.ResolveFileText
-        Dim lines As String() = text.LineTokens
+        Dim promptBuild As New StringBuilder
+        Dim files As FileReference() = host.GetReferenceFiles.ToArray
 
-        prompt_text = prompt_text & vbCrLf &
-            $"
------ 当前所打开的文件 -----
-文件路径: {host.file_ref.GetFullPath}
-文件行数：{lines.Length}{If(top < lines.Length, $" (在这里预览前{top}行数据，如果需要读取文件全部数据，可以使用read_file函数来读取)", "")}
-文件文本内容: 
+        Call promptBuild.AppendLine($"SYSTEM：当前会话上下文有 {files.Length} 个文件附件")
 
-{lines.Take(top).JoinBy(vbCrLf)}
-"
-        Return prompt_text
+        For Each file As FileReference In files
+            Call promptBuild.AppendLine()
+            Call promptBuild.AppendLine(Await file.GetFileContent(top))
+        Next
+
+        Call promptBuild.AppendLine("文件附件区域结束，以下内容为当前用户会话内容：")
+        Call promptBuild.AppendLine()
+        Call promptBuild.AppendLine(prompt_text)
+
+        Return promptBuild.ToString
     End Function
 
     ''' <summary>
@@ -84,7 +87,7 @@ Public Class LLMHost
         End If
 
         If host.SourceAvailable Then
-            prompt_text = Await AttachFile(prompt_text, 100)
+            prompt_text = Await AttachFile(prompt_text, 300)
         End If
 
         Call host.BeginChat()
