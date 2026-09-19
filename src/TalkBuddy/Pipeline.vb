@@ -257,7 +257,16 @@ Public Class DemoPipeline
     ''' 实测里主机侧的类型转换与逐元素循环经常比内核计算更贵。
     ''' </remarks>
     Private Shared Sub PrintStageProfile(trainer As LMTrainer)
-        If trainer Is Nothing OrElse Not trainer.ProfileStages Then Return
+        If trainer Is Nothing Then Return
+
+        ' 被跳过的步必须显式报出来，否则就成了被掩盖的失败
+        If trainer.SkippedSteps > 0 Then
+            ConsoleReport.KeyValue("因梯度失控被跳过的步", $"{trainer.SkippedSteps} / {trainer.Step}")
+            ConsoleReport.Note("  被跳过的是「参数更新」而非「前向」：这些步的 loss 仍然有效，")
+            ConsoleReport.Note("  只是梯度已经不可信，强行更新会把参数一步推成 NaN。")
+        End If
+
+        If Not trainer.ProfileStages Then Return
         If trainer.LastStageMilliseconds.Count = 0 Then Return
 
         Dim total = trainer.LastStageMilliseconds.Sum(Function(s) s.Ms)
@@ -321,6 +330,7 @@ Public Class DemoPipeline
         ConsoleReport.KeyValue("loss", $"{trainer.History.First().Loss:F4} → {trainer.History.Last().Loss:F4}")
         ConsoleReport.KeyValue("perplexity", $"{trainer.History.First().Perplexity:F2} → {trainer.History.Last().Perplexity:F2}")
         ConsoleReport.KeyValue("实际取用的样本区段", $"跨 {System.Math.Min(steps * DemoConfig.BatchSize * stride, samples.Count)} / {samples.Count} 条")
+        Call PrintStageProfile(trainer)
     End Sub
 
 #End Region
