@@ -53,7 +53,7 @@ Public Module DemoConfig
     ''' </summary>
     ''' <param name="vocabSize">词表大小（由分词器适配器给出）</param>
     Public Function CreateModelConfig(vocabSize As Integer) As LLMModelConfig
-        Return New LLMModelConfig With {
+        Dim config As New LLMModelConfig With {
             .VocabSize = vocabSize,
             .DModel = 128,
             .NumLayers = 4,
@@ -63,18 +63,22 @@ Public Module DemoConfig
             .MaxSeqLen = 256,
             .RopeTheta = 10000.0,
             .DenseFfnHidden = 0,
-            ' ---- MoE：首层稠密，其余三层走 DeepSeekMoE ----
             .UseMoE = True,
             .MoEStartLayer = 1,
             .NumRoutedExperts = 8,
             .TopKExperts = 2,
             .NumSharedExperts = 1,
             .ExpertHidden = 0,
-            ' ---- 节点受限路由：4 个"节点"，每 token 最多落在 2 个节点内 ----
             .NodeGroups = 4,
             .MaxNodesPerToken = 2,
             .BalanceBiasRate = 0.001
         }
+
+        ' MoE 从第 1 层开始：第 0 层保持稠密（DeepSeek 的做法），
+        ' 让路由器不必在还很"生"的浅层表示上做选择。
+        ' 节点受限路由：8 个路由专家分 4 组，每个 token 的 Top-2 必须落在最多 2 组内。
+
+        Return config
     End Function
 
     ''' <summary>

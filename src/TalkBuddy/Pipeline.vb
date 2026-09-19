@@ -160,9 +160,9 @@ Public Class DemoPipeline
 
         ConsoleReport.Note("")
         ConsoleReport.Note("读法：")
-        ConsoleReport.Note("  * total 是"知识容量"——全部专家的参数都要驻留内存，即使某个 token 用不到；")
-        ConsoleReport.Note("  * active/token 是"实际计算量"——只有 Top-K 路由专家 + 全部共享专家参与前向；")
-        ConsoleReport.Note("  * 两者的比值就是 MoE 的激活率，也是"大容量、低算力"这一卖点的量化形式。")
+        ConsoleReport.Note("  * total 是「知识容量」——全部专家的参数都要驻留内存，即使某个 token 用不到；")
+        ConsoleReport.Note("  * active/token 是「实际计算量」——只有 Top-K 路由专家 + 全部共享专家参与前向；")
+        ConsoleReport.Note("  * 两者的比值就是 MoE 的激活率，也是「大容量、低算力」这一卖点的量化形式。")
     End Sub
 
 #End Region
@@ -231,14 +231,14 @@ Public Class DemoPipeline
         ConsoleReport.Note("样本明文（---- 之前是 system+user，一律不计损失）：")
         ConsoleReport.Note("  " & sample.Text.Replace(vbLf, " ⏎ ").Replace(ToolCallProtocol.BeginOfSentenceMarker, "[BOS]"))
         ConsoleReport.Note("")
-        ConsoleReport.Note("损失掩码的实际作用是：模型只在 assistant 的 token 上学"该怎么回答"，")
-        ConsoleReport.Note("不会去学"复述用户问了什么"——那样只会把有限的容量浪费在记忆输入上。")
+        ConsoleReport.Note("损失掩码的实际作用是：模型只在 assistant 的 token 上学「该怎么回答」，")
+        ConsoleReport.Note("不会去学「复述用户问了什么」——那样只会把有限的容量浪费在记忆输入上。")
 
         Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps))
 
         For [step] As Integer = 1 To steps
-            Dim slice = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
-            Dim batch = _template.CreateBatch(slice, DemoConfig.InstructionSequenceLength, DemoConfig.BatchSize)
+            Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
+            Dim batch = _template.CreateBatch(batchSamples, DemoConfig.InstructionSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 
             If _verbosity >= 1 OrElse [step] Mod 5 = 0 OrElse [step] = steps Then
@@ -273,14 +273,14 @@ Public Class DemoPipeline
             ConsoleReport.Note("")
             ConsoleReport.Note("这条样本里被 mask 掉的部分：")
             ConsoleReport.Note("  " & ToolCallProtocol.OutputsBeginMarker & " … " & ToolCallProtocol.OutputsEndMarker &
-                               "（框架回填的工具结果，模型不需要学习"预测工具返回什么"）")
+                               "（框架回填的工具结果，模型不需要学习「预测工具返回什么」）")
         End If
 
         Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps))
 
         For [step] As Integer = 1 To steps
-            Dim slice = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
-            Dim batch = _template.CreateBatch(slice, DemoConfig.ToolSequenceLength, DemoConfig.BatchSize)
+            Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
+            Dim batch = _template.CreateBatch(batchSamples, DemoConfig.ToolSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 
             If _verbosity >= 1 OrElse [step] Mod 5 = 0 OrElse [step] = steps Then
@@ -496,10 +496,10 @@ Public Class DemoPipeline
         Dim systemPrompt = _registry.RenderCompactCatalog()
 
         ConsoleReport.Note("")
-        ConsoleReport.Note("注入 prompt 的工具清单（readme 里"把 Schema 变成 token"的第一步）：")
+        ConsoleReport.Note("注入 prompt 的工具清单（readme 里「把 Schema 变成 token」的第一步）：")
         ConsoleReport.Note(systemPrompt, 4)
 
-        Dim loop As New AgentLoop(_model, _codec, _registry)
+        Dim agent As New AgentLoop(_model, _codec, _registry)
 
         Dim options As New AgentLoopOptions With {
             .MaxToolRounds = 3,
@@ -512,7 +512,7 @@ Public Class DemoPipeline
         }
 
         Dim watch = Diagnostics.Stopwatch.StartNew()
-        Dim result = loop.Run(systemPrompt, userMessage, options)
+        Dim result = agent.Run(systemPrompt, userMessage, options)
         watch.Stop()
 
         For Each round In result.Rounds
@@ -634,7 +634,10 @@ Public Class DemoPipeline
         Dim before = Generate(promptIds, useCache:=True).GeneratedTokens.ToArray()
 
         _model.Save(path)
-        ConsoleReport.KeyValue("已保存", $"{path}（{ConsoleReport.Human(IO.FileInfo(path).Length)}）")
+
+        Dim size As Long = New System.IO.FileInfo(path).Length
+
+        ConsoleReport.KeyValue("已保存", $"{path}（{ConsoleReport.Human(size)}）")
 
         Dim restored = _model.Load(path)
         ConsoleReport.KeyValue("已恢复参数", $"{restored} / {_model.Parameters.Entries.Count}")

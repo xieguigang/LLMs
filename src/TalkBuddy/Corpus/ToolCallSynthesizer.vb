@@ -89,9 +89,9 @@ Public Class ToolCallSynthesizer
     ''' <summary>形态 A：系统提示 + 问题 + 工具调用。</summary>
     Private Function RenderSingleCall(question As String, toolCall As ToolCall) As TemplatedSample
         Dim messages As New List(Of ChatMessage) From {
-            ChatMessage.System(BuildSystemPrompt()),
-            ChatMessage.User(question),
-            ChatMessage.Assistant("", New List(Of ToolCall) From {toolCall})
+            ChatMessage.AsSystem(BuildSystemPrompt()),
+            ChatMessage.AsUser(question),
+            ChatMessage.AsAssistant("", New List(Of ToolCall) From {toolCall})
         }
 
         Return _template.Render(messages, addGenerationPrompt:=False)
@@ -102,10 +102,10 @@ Public Class ToolCallSynthesizer
                                           result As String) As TemplatedSample
 
         Dim messages As New List(Of ChatMessage) From {
-            ChatMessage.User(question),
-            ChatMessage.Assistant("", New List(Of ToolCall) From {toolCall}),
-            ChatMessage.Tool(result),
-            ChatMessage.Assistant("查询结果：" & result)
+            ChatMessage.AsUser(question),
+            ChatMessage.AsAssistant("", New List(Of ToolCall) From {toolCall}),
+            ChatMessage.AsTool(result),
+            ChatMessage.AsAssistant("查询结果：" & result)
         }
 
         Return _template.Render(messages, addGenerationPrompt:=False)
@@ -126,10 +126,10 @@ Public Class ToolCallSynthesizer
         Dim failure = _registry.Invoke(wrongCall)
 
         Dim messages As New List(Of ChatMessage) From {
-            ChatMessage.User(question),
-            ChatMessage.Assistant("", New List(Of ToolCall) From {wrongCall}),
-            ChatMessage.Tool(failure),
-            ChatMessage.Assistant("", New List(Of ToolCall) From {toolCall})
+            ChatMessage.AsUser(question),
+            ChatMessage.AsAssistant("", New List(Of ToolCall) From {wrongCall}),
+            ChatMessage.AsTool(failure),
+            ChatMessage.AsAssistant("", New List(Of ToolCall) From {toolCall})
         }
 
         Return _template.Render(messages, addGenerationPrompt:=False)

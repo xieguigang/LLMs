@@ -48,19 +48,19 @@ Public Class ChatMessage
         Me.ToolCalls = toolCalls
     End Sub
 
-    Public Shared Function System(content As String) As ChatMessage
+    Public Shared Function AsSystem(content As String) As ChatMessage
         Return New ChatMessage("system", content)
     End Function
 
-    Public Shared Function User(content As String) As ChatMessage
+    Public Shared Function AsUser(content As String) As ChatMessage
         Return New ChatMessage("user", content)
     End Function
 
-    Public Shared Function Assistant(content As String, Optional toolCalls As List(Of ToolCall) = Nothing) As ChatMessage
+    Public Shared Function AsAssistant(content As String, Optional toolCalls As List(Of ToolCall) = Nothing) As ChatMessage
         Return New ChatMessage("assistant", content, toolCalls)
     End Function
 
-    Public Shared Function Tool(content As String) As ChatMessage
+    Public Shared Function AsTool(content As String) As ChatMessage
         Return New ChatMessage("tool", content)
     End Function
 
@@ -127,33 +127,33 @@ Public Class ChatTemplate
 
         Dim systemAdded As Boolean = False
 
-        For Each message In messages
-            Select Case message.Role
+        For Each msg In messages
+            Select Case msg.Role
 
                 Case "system"
                     If systemAdded Then
                         Call segments.Add(New Segment With {.Text = vbLf & vbLf, .Trainable = False})
                     End If
 
-                    Call segments.Add(New Segment With {.Text = message.Content, .Trainable = False})
+                    Call segments.Add(New Segment With {.Text = msg.Content, .Trainable = False})
                     systemAdded = True
 
                 Case "user"
                     Call segments.Add(New Segment With {.Text = ToolCallProtocol.UserMarker, .Trainable = False})
-                    Call segments.Add(New Segment With {.Text = message.Content, .Trainable = False})
+                    Call segments.Add(New Segment With {.Text = msg.Content, .Trainable = False})
 
                 Case "assistant"
-                    Call RenderAssistant(segments, message)
+                    Call RenderAssistant(segments, msg)
 
                 Case "tool"
                     Call segments.Add(New Segment With {.Text = ToolCallProtocol.OutputsBeginMarker, .Trainable = False})
                     Call segments.Add(New Segment With {.Text = ToolCallProtocol.OutputBeginMarker, .Trainable = False})
-                    Call segments.Add(New Segment With {.Text = message.Content, .Trainable = False})
+                    Call segments.Add(New Segment With {.Text = msg.Content, .Trainable = False})
                     Call segments.Add(New Segment With {.Text = ToolCallProtocol.OutputEndMarker, .Trainable = False})
                     Call segments.Add(New Segment With {.Text = ToolCallProtocol.OutputsEndMarker, .Trainable = False})
 
                 Case Else
-                    Throw New ArgumentException($"未知的消息角色 '{message.Role}'")
+                    Throw New ArgumentException($"未知的消息角色 '{msg.Role}'")
             End Select
         Next
 
@@ -175,22 +175,22 @@ Public Class ChatTemplate
     ''' 工具调用片段本身是<b>要训练</b>的（"调用决策与调用本身计算交叉熵"），
     ''' 被 mask 掉的是随后由框架回填的工具结果。
     ''' </remarks>
-    Private Sub RenderAssistant(segments As List(Of Segment), message As ChatMessage)
+    Private Sub RenderAssistant(segments As List(Of Segment), msg As ChatMessage)
         Call segments.Add(New Segment With {.Text = ToolCallProtocol.AssistantMarker, .Trainable = False})
 
-        If Not String.IsNullOrEmpty(message.Content) Then
-            Call segments.Add(New Segment With {.Text = message.Content, .Trainable = True})
+        If Not String.IsNullOrEmpty(msg.Content) Then
+            Call segments.Add(New Segment With {.Text = msg.Content, .Trainable = True})
         End If
 
-        If message.ToolCalls Is Nothing OrElse message.ToolCalls.Count = 0 Then
+        If msg.ToolCalls Is Nothing OrElse msg.ToolCalls.Count = 0 Then
             Call segments.Add(New Segment With {.Text = ToolCallProtocol.EndOfSentenceMarker, .Trainable = True})
             Return
         End If
 
         Call segments.Add(New Segment With {.Text = ToolCallProtocol.CallsBeginMarker, .Trainable = True})
 
-        For i As Integer = 0 To message.ToolCalls.Count - 1
-            Dim toolCall = message.ToolCalls(i)
+        For i As Integer = 0 To msg.ToolCalls.Count - 1
+            Dim toolCall = msg.ToolCalls(i)
 
             If i > 0 Then
                 ' 并行工具调用之间用换行分隔

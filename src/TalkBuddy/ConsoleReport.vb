@@ -101,7 +101,7 @@ Public Module ConsoleReport
 
         If max - min < 1.0E-09 Then max = min + 1.0
 
-        Dim rows(height - 1) As Char()
+        Dim rows(height - 1)() As Char
 
         For r As Integer = 0 To height - 1
             rows(r) = New Char(values.Length - 1) {}

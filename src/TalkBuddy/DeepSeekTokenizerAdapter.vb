@@ -19,14 +19,16 @@
 Imports System.Collections.Generic
 Imports System.Diagnostics
 Imports Microsoft.VisualBasic.MachineLearning.LLM
-Imports ChineseTokenizer.HuggingFace
+' NLP 工程（NLP.NET.vbproj）的 RootNamespace 是 Microsoft.VisualBasic.Data.NLP，
+' 因此 HuggingFaceTokenizer 的完整命名空间是下面这一长串。
+Imports Microsoft.VisualBasic.Data.NLP.ChineseTokenizer.HuggingFace
 
 Public Class DeepSeekTokenizerAdapter
     Implements ITextCodec
 
     Private ReadOnly _tokenizer As HuggingFaceTokenizer
     Private ReadOnly _unkId As Integer
-    Private ReadOnly _vocabulary As TokenizerVocabulary
+    Private ReadOnly _vocabView As TokenizerVocabulary
     Private ReadOnly _specialIds As New Dictionary(Of String, Integer)()
 
     ''' <summary>底层分词器（需要做 tokenize 展示时可以取用）。</summary>
@@ -44,6 +46,10 @@ Public Class DeepSeekTokenizerAdapter
 
     ''' <summary>约束解码使用的词表文本视图。</summary>
     Public ReadOnly Property Vocabulary As TokenizerVocabulary Implements ITextCodec.Vocabulary
+        Get
+            Return _vocabView
+        End Get
+    End Property
 
     ''' <summary>保留 token 的字面形式 → token id。</summary>
     Public ReadOnly Property SpecialTokenIds As IReadOnlyDictionary(Of String, Integer)
@@ -77,15 +83,15 @@ Public Class DeepSeekTokenizerAdapter
 
         Dim elapsed As Double = 0.0
 
-        _vocabulary = BuildVocabulary(VocabSize, elapsed)
+        _vocabView = BuildVocabulary(VocabSize, elapsed)
         VocabularyBuildMilliseconds = elapsed
-        UnusableTokens = VocabSize - _vocabulary.UsableTokens - _vocabulary.SpecialTokens
+        UnusableTokens = VocabSize - _vocabView.UsableTokens - _vocabView.SpecialTokens
 
         If verbose Then
             Call Console.WriteLine($"[tokenizer] vocab={VocabSize:N0} (raw {RawVocabSize:N0}), " &
                                    $"model={tokenizer.ModelType}, special_tokens={_specialIds.Count}")
             Call Console.WriteLine($"[tokenizer] constrained-decoding view built in {elapsed:F0} ms: " &
-                                   $"{_vocabulary.UsableTokens:N0} usable tokens over {_vocabulary.FirstCharacters.Length:N0} first-characters")
+                                   $"{_vocabView.UsableTokens:N0} usable tokens over {_vocabView.FirstCharacters.Length:N0} first-characters")
         End If
     End Sub
 

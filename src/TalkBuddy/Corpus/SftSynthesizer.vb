@@ -36,16 +36,16 @@ Public Class SftSynthesizer
 
     ''' <summary>合成 <paramref name="count"/> 条指令样本。</summary>
     Public Function CreateSamples(count As Integer) As List(Of TemplatedSample)
-        Dim pairs = Pairs()
+        Dim allPairs = Pairs()
         Dim samples As New List(Of TemplatedSample)()
 
         For i As Integer = 0 To count - 1
-            Dim pair = pairs(i Mod pairs.Length)
+            Dim pair = allPairs(i Mod allPairs.Length)
 
             Dim messages As New List(Of ChatMessage) From {
-                ChatMessage.System(SystemPrompt),
-                ChatMessage.User(pair.Question),
-                ChatMessage.Assistant(pair.Answer)
+                ChatMessage.AsSystem(SystemPrompt),
+                ChatMessage.AsUser(pair.Question),
+                ChatMessage.AsAssistant(pair.Answer)
             }
 
             Call samples.Add(_template.Render(messages, addGenerationPrompt:=False))
