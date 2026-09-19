@@ -242,3 +242,4 @@ _Pvt_Extensions
 .Rproj.user
 src/Ollama/build_log.txt
 src/WebView2UI/build_log.txt
+/src/TalkBuddy/test/talkbuddy-demo.model
