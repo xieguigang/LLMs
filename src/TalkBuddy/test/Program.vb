@@ -34,9 +34,12 @@ Imports Microsoft.VisualBasic.MachineLearning.LLM
 
 Module Program
 
-    Private _pretrainSteps As Integer = DemoConfig.PretrainSteps
-    Private _instructionSteps As Integer = DemoConfig.InstructionSftSteps
-    Private _toolSteps As Integer = DemoConfig.ToolSftSteps
+    ' 步数不再在字段初始化时取默认值 —— 它依赖规模档位，
+    ' 而档位要到参数解析之后才确定（见 ParseArguments 末尾）
+    Private _pretrainSteps As Integer
+    Private _instructionSteps As Integer
+    Private _toolSteps As Integer
+    Private _stepsExplicit As Boolean
     Private _verbosity As Integer = 1
     Private _skipTraining As Boolean = False
 
@@ -96,6 +99,8 @@ Module Program
     Private Sub ParseArguments(args As String())
         If args Is Nothing Then Return
 
+        Dim scaleSpecified As Boolean = False
+
         For Each raw In args
             Dim arg = raw.Trim()
             Dim value As Integer = 0
@@ -103,13 +108,22 @@ Module Program
             Select Case True
 
                 Case arg.StartsWith("--pretrain=", StringComparison.Ordinal)
-                    If Integer.TryParse(arg.Substring(11), value) Then _pretrainSteps = value
+                    If Integer.TryParse(arg.Substring(11), value) Then
+                        _pretrainSteps = value
+                        _stepsExplicit = True
+                    End If
 
                 Case arg.StartsWith("--instruction=", StringComparison.Ordinal)
-                    If Integer.TryParse(arg.Substring(14), value) Then _instructionSteps = value
+                    If Integer.TryParse(arg.Substring(14), value) Then
+                        _instructionSteps = value
+                        _stepsExplicit = True
+                    End If
 
                 Case arg.StartsWith("--tool=", StringComparison.Ordinal)
-                    If Integer.TryParse(arg.Substring(7), value) Then _toolSteps = value
+                    If Integer.TryParse(arg.Substring(7), value) Then
+                        _toolSteps = value
+                        _stepsExplicit = True
+                    End If
 
                 Case arg.StartsWith("--vocab=", StringComparison.Ordinal)
                     If Integer.TryParse(arg.Substring(8), value) Then DemoConfig.VocabularyLimit = value
@@ -127,6 +141,35 @@ Module Program
                     ParameterSet.EnableDeviceResidency = False
                     ConsoleReport.Note("已禁用设备常驻训练：全部参数走主机 AdamW（用于 A/B 对比）")
 
+                Case arg.Equals("--tiny", StringComparison.OrdinalIgnoreCase)
+                    DemoConfig.Scale = DemoConfig.ModelScale.Tiny
+                    scaleSpecified = True
+
+                Case arg.Equals("--200m", StringComparison.OrdinalIgnoreCase)
+                    DemoConfig.Scale = DemoConfig.ModelScale.Scale200M
+                    scaleSpecified = True
+
+                Case arg.Equals("--400m", StringComparison.OrdinalIgnoreCase)
+                    DemoConfig.Scale = DemoConfig.ModelScale.Scale400M
+                    scaleSpecified = True
+
+                Case arg.StartsWith("--scale=", StringComparison.OrdinalIgnoreCase)
+                    Dim scaleName = arg.Substring(8).Trim().ToLowerInvariant()
+                    Dim applied As Boolean = True
+
+                    Select Case scaleName
+                        Case "tiny", "18m" : DemoConfig.Scale = DemoConfig.ModelScale.Tiny
+                        Case "200m" : DemoConfig.Scale = DemoConfig.ModelScale.Scale200M
+                        Case "400m" : DemoConfig.Scale = DemoConfig.ModelScale.Scale400M
+                        Case Else : applied = False
+                    End Select
+
+                    If applied Then
+                        scaleSpecified = True
+                    Else
+                        ConsoleReport.Note($"未知的规模档位 '{scaleName}'，可选 tiny / 200m / 400m（保持原档位）")
+                    End If
+
                 Case arg.Equals("--no-train", StringComparison.OrdinalIgnoreCase)
                     _skipTraining = True
 
@@ -134,11 +177,27 @@ Module Program
                     _pretrainSteps = 3
                     _instructionSteps = 3
                     _toolSteps = 3
+                    _stepsExplicit = True
                     DemoConfig.VocabularyLimit = 4096
                     ConsoleReport.Note("已启用 --quick：步数 3 / 词表 4096（仅用于验证流程）")
 
             End Select
         Next
+
+        ' 规模档位决定单步耗时，因此"未显式指定步数"时按档位给默认值：
+        ' 大档单步要数秒，若沿用教学档的 25/25/16 步，整次演示会远超半小时预算
+        If Not _stepsExplicit Then
+            Dim preset = DemoConfig.ScaleDefaults()
+
+            _pretrainSteps = preset.Pretrain
+            _instructionSteps = preset.Instruction
+            _toolSteps = preset.Tool
+        End If
+
+        If scaleSpecified Then
+            ConsoleReport.Note($"规模档位：{DemoConfig.Scale}  " &
+                               $"(训练步数 {_pretrainSteps}/{_instructionSteps}/{_toolSteps})")
+        End If
     End Sub
 
     Private Sub PrintSummary(pipeline As DemoPipeline)
@@ -149,6 +208,17 @@ Module Program
         ConsoleReport.KeyValue("总参数", $"{pipeline.Model.TotalParameters:N0}")
         ConsoleReport.KeyValue("单 token 激活参数", $"{pipeline.Model.ActiveParametersPerToken:N0} " &
                                                      $"（激活率 {pipeline.Model.ActivationRatio:P2}）")
+
+        If pipeline.CudaEnabled Then
+            Dim pinnedMb = pipeline.PinnedDeviceBytes / 1024.0 / 1024.0
+
+            ConsoleReport.KeyValue("设备端更新的参数", $"{pipeline.DeviceUpdatedParameters} / {pipeline.Model.ParameterCount} 项")
+            ConsoleReport.KeyValue("常驻显存", $"{pinnedMb:N1} MB（权重 + 一阶/二阶矩）")
+            ConsoleReport.Note("")
+            ConsoleReport.Note("为什么不是全部参数都走设备端：词嵌入与 RMSNorm 的 γ 在主机侧被直接读取")
+            ConsoleReport.Note("（Embed 按行查表、RmsNorm 在主机循环里用 γ 缩放），把它们钉进显存")
+            ConsoleReport.Note("会让主机读到陈旧值。其余只被矩阵乘消费的权重则全部常驻显存。")
+        End If
 
         ConsoleReport.Note("")
         ConsoleReport.Note("三条主线的代码落点：")

@@ -40,6 +40,27 @@ Public Class DemoPipeline
     ''' <summary>是否成功切到了 CUDA 后端。</summary>
     Public ReadOnly Property CudaEnabled As Boolean
 
+    ''' <summary>
+    ''' 最近一次参数更新中真正走了<b>设备端内核</b>的参数个数。
+    ''' </summary>
+    ''' <remarks>
+    ''' 这是"设备常驻训练是否生效"的最直接证据。它不等于参数总数是正常的：
+    ''' 词嵌入与 RMSNorm 的 γ 在主机侧被直接读取（<c>Embed</c> 查表、<c>RmsNorm</c> 循环），
+    ''' 因此刻意不钉住，仍走主机 AdamW。
+    ''' </remarks>
+    Public ReadOnly Property DeviceUpdatedParameters As Integer
+        Get
+            Return _model.Parameters.DeviceUpdatedCount
+        End Get
+    End Property
+
+    ''' <summary>当前钉在显存里的参数字节数。</summary>
+    Public ReadOnly Property PinnedDeviceBytes As Long
+        Get
+            Return _model.PinnedDeviceBytes
+        End Get
+    End Property
+
     ''' <summary>分词器适配器。</summary>
     Public ReadOnly Property Codec As DeepSeekTokenizerAdapter
         Get

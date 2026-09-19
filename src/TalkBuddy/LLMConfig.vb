@@ -49,11 +49,99 @@ Public Module DemoConfig
 #Region "模型结构"
 
     ''' <summary>
-    ''' demo 模型的超参。
+    ''' 模型规模档位。
+    ''' </summary>
+    ''' <remarks>
+    ''' 参数量的大头始终是"词表 × d_model"的词嵌入（12.8 万词表下，d_model=768 就是 9890 万），
+    ''' 因此放大规模时必须同步考虑专家中间层宽度 —— 若让它自动推导，
+    ''' d_model=768 会得到 768 宽的专家，MoE 部分会直接冲到 3.8 亿，远超预算。
+    ''' </remarks>
+    Public Enum ModelScale
+
+        ''' <summary>
+        ''' 教学小档（约 1800 万参数）：与早先版本一致，用于快速验证流程。
+        ''' </summary>
+        Tiny = 0
+
+        ''' <summary>
+        ''' 约 1.9 亿参数：d_model=768、12 层、16 路由专家 + 2 共享专家。
+        ''' </summary>
+        ''' <remarks>
+        ''' 单精度下设备侧稳定占用约 <c>1.9亿 × 4 × 3 ≈ 2.3 GB</c>（权重 + 一阶矩 + 二阶矩），
+        ''' 主机侧因为要保存 <c>Double</c> 主副本，需要约 <c>1.9亿 × 8 × 4 ≈ 6.1 GB</c>。
+        ''' </remarks>
+        Scale200M = 1
+
+        ''' <summary>
+        ''' 约 3.5 亿参数：d_model=1024、12 层、16 路由专家 + 2 共享专家。
+        ''' </summary>
+        ''' <remarks>
+        ''' 设备侧约 <c>4.2 GB</c>（8 GB 卡可用约 7 GB，能放下）；
+        ''' 但主机侧需要约 <c>11.2 GB</c> 内存，请确认物理内存充足。
+        ''' </remarks>
+        Scale400M = 2
+
+    End Enum
+
+    ''' <summary>当前使用的规模档位。</summary>
+    Public Property Scale As ModelScale = ModelScale.Scale200M
+
+    ''' <summary>
+    ''' demo 模型的超参（按当前规模档位构建）。
     ''' </summary>
     ''' <param name="vocabSize">词表大小（由分词器适配器给出）</param>
     Public Function CreateModelConfig(vocabSize As Integer) As LLMModelConfig
+        If Scale = ModelScale.Tiny Then Return CreateTinyModelConfig(vocabSize)
+
         Dim config As New LLMModelConfig With {
+            .VocabSize = vocabSize,
+            .MaxSeqLen = 256,
+            .RopeTheta = 10000.0,
+            .UseMoE = True,
+            .MoEStartLayer = 1,
+            .NumRoutedExperts = 16,
+            .TopKExperts = 2,
+            .NumSharedExperts = 2,
+            .NodeGroups = 4,
+            .MaxNodesPerToken = 2,
+            .BalanceBiasRate = BalanceBiasRate
+        }
+
+        If Scale = ModelScale.Scale400M Then
+            ' d_model=1024：16 头 × 64 = 1024；GQA 4 个 KV 头，KV Cache 缩小 4 倍
+            config.DModel = 1024
+            config.NumLayers = 12
+            config.NumHeads = 16
+            config.NumKvHeads = 4
+            config.HeadDim = 64
+            config.ExpertHidden = 256
+            config.DenseFfnHidden = 4096
+        Else
+            ' d_model=768：12 头 × 64 = 768；GQA 4 个 KV 头
+            config.DModel = 768
+            config.NumLayers = 12
+            config.NumHeads = 12
+            config.NumKvHeads = 4
+            config.HeadDim = 64
+            config.ExpertHidden = 128
+            config.DenseFfnHidden = 2048
+        End If
+
+        ' MoE 从第 1 层开始：第 0 层保持稠密（DeepSeek 的做法），
+        ' 让路由器不必在还很"生"的浅层表示上做选择。
+        ' 节点受限路由：16 个路由专家分 4 组，每个 token 的 Top-2 必须落在最多 2 组内。
+
+        Return config
+    End Function
+
+    ''' <summary>
+    ''' 教学小档：4 层、d_model=128、8 专家，约 1800 万参数。
+    ''' </summary>
+    ''' <remarks>
+    ''' 保留它是因为"规模放大后单步要几秒"，调试代码逻辑时用这个档位才现实。
+    ''' </remarks>
+    Private Function CreateTinyModelConfig(vocabSize As Integer) As LLMModelConfig
+        Return New LLMModelConfig With {
             .VocabSize = vocabSize,
             .DModel = 128,
             .NumLayers = 4,
@@ -73,19 +161,15 @@ Public Module DemoConfig
             .MaxNodesPerToken = 2,
             .BalanceBiasRate = BalanceBiasRate
         }
-
-        ' MoE 从第 1 层开始：第 0 层保持稠密（DeepSeek 的做法），
-        ' 让路由器不必在还很"生"的浅层表示上做选择。
-        ' 节点受限路由：8 个路由专家分 4 组，每个 token 的 Top-2 必须落在最多 2 组内。
-
-        Return config
     End Function
 
     ''' <summary>
     ''' 只用一个批次即可跑通的极小配置（用于验证流程，不用于观察学习效果）。
     ''' </summary>
     Public Function CreateSmokeModelConfig(vocabSize As Integer) As LLMModelConfig
-        Dim config = CreateModelConfig(vocabSize)
+        ' 必须从小档派生：若从当前档位派生，ExpertHidden / DenseFfnHidden 会保留
+        ' 大档的取值（128 / 2048），与缩到 d_model=96 的其它字段严重不匹配
+        Dim config = CreateTinyModelConfig(vocabSize)
 
         config.NumLayers = 2
         config.DModel = 96
@@ -96,6 +180,8 @@ Public Module DemoConfig
         config.NumRoutedExperts = 4
         config.TopKExperts = 2
         config.NumSharedExperts = 1
+        config.ExpertHidden = 64
+        config.DenseFfnHidden = 256
         config.NodeGroups = 2
         config.MaxNodesPerToken = 1
 
@@ -170,6 +256,22 @@ Public Module DemoConfig
 
     ''' <summary>全局梯度范数裁剪上限。</summary>
     Public Property MaxGradNorm As Double = 1.0
+
+    ''' <summary>
+    ''' 各规模档位默认的训练步数。
+    ''' </summary>
+    ''' <remarks>
+    ''' 步数直接由单步耗时倒推：教学小档约 1 s/step，2 亿参数档实测在 10 s/step 量级
+    ''' （LM head 随 d_model 线性放大 6 倍、MoE 专家数翻倍），
+    ''' 因此步数必须相应压到个位数，才能把整次演示控制在半小时以内。
+    ''' </remarks>
+    Public Function ScaleDefaults() As (Pretrain As Integer, Instruction As Integer, Tool As Integer)
+        Select Case Scale
+            Case ModelScale.Tiny : Return (25, 25, 16)
+            Case ModelScale.Scale400M : Return (3, 3, 2)
+            Case Else : Return (6, 6, 4)
+        End Select
+    End Function
 
     ''' <summary>按给定步数为某个阶段构造训练配置。</summary>
     Public Function CreateTrainingConfig(totalSteps As Integer) As TrainingConfig
