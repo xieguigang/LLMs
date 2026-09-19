@@ -27,6 +27,8 @@
 ' ---------------------------------------------------------------------------
 
 Imports System
+' TalkBuddy.vbproj 的 RootNamespace 是 TalkBuddy，装配层类型都在这个名字空间下
+Imports TalkBuddy
 Imports Microsoft.VisualBasic.MachineLearning.LLM
 
 Module Program
