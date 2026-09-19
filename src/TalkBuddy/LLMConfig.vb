@@ -184,7 +184,7 @@ Public Module DemoConfig
     ''' 取值要够长才能看出 O(t²) 与 O(t) 的差距 —— 序列太短时两者都在毫秒级，
     ''' 测出来的比值基本是噪声。
     ''' </remarks>
-    Public Property KvCacheProbeTokens As Integer = 32
+    Public Property KvCacheProbeTokens As Integer = 48
 
     ''' <summary>是否尝试注册 CUDA 后端。</summary>
     Public Property TryCuda As Boolean = True

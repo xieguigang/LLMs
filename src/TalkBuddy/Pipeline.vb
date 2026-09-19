@@ -423,6 +423,12 @@ Public Class DemoPipeline
             ConsoleReport.Note($"候选集={sampler.LastCandidateCount}, 分布熵={sampler.LastEntropy:F2} nats, " &
                                $"{result.AverageStepMilliseconds:F0} ms/step", 4)
         Next
+
+        ConsoleReport.Note("")
+        ConsoleReport.Note("读法：这一节看的不是「输出好不好」，而是「策略如何改变分布形状」——")
+        ConsoleReport.Note("  贪心 / 低温度的候选集很小、分布熵接近 0；Top-p 在分布平坦时保留上千个候选。")
+        ConsoleReport.Note("  输出文本本身是乱码，属于预期：几十步训练只够让模型记住语料里的高频片段，")
+        ConsoleReport.Note("  远不足以学会通顺地说话。")
     End Sub
 
 #End Region
@@ -455,18 +461,34 @@ Public Class DemoPipeline
 
         ConsoleReport.Note("")
         ConsoleReport.KeyValue("有缓存 单步均值", $"{cachedResult.AverageStepMilliseconds:F0} ms")
+
+        If cachedResult.StepMilliseconds.Count > 1 Then
+            ConsoleReport.KeyValue("有缓存 首步 → 末步",
+                                   $"{cachedResult.StepMilliseconds.First():F0} ms → {cachedResult.StepMilliseconds.Last():F0} ms（基本持平）")
+        End If
+
         ConsoleReport.KeyValue("无缓存 单步均值", $"{plainResult.AverageStepMilliseconds:F0} ms")
+
+        If plainResult.StepMilliseconds.Count > 1 Then
+            ConsoleReport.KeyValue("无缓存 首步 → 末步",
+                                   $"{plainResult.StepMilliseconds.First():F0} ms → {plainResult.StepMilliseconds.Last():F0} ms（随 t 增长）")
+        End If
 
         Dim speedup = If(cachedResult.AverageStepMilliseconds > 0,
                          plainResult.AverageStepMilliseconds / cachedResult.AverageStepMilliseconds, 0.0)
 
-        ConsoleReport.KeyValue("加速比", $"{speedup:F2}x")
+        ConsoleReport.KeyValue("平均加速比", $"{speedup:F2}x")
         ConsoleReport.KeyValue("缓存占用", $"{ConsoleReport.Human(cachedResult.CacheBytes)}（随序列长度线性增长）")
 
         ConsoleReport.Note("")
-        ConsoleReport.Note("为什么会有这个加速：无缓存时每生成一个 token 都要把整段前缀重新前向一次，")
-        ConsoleReport.Note("注意力段是 O(t²)；有缓存时历史 K/V 直接读，注意力段降为 O(t)。")
-        ConsoleReport.Note("序列越长，两者的差距越大 —— 上面这个比值还只是几十个 token 量级的结果。")
+        ConsoleReport.Note("为什么「末步耗时」比「平均加速比」更能说明问题：")
+        ConsoleReport.Note("  无缓存路径每生成一个 token 都要把整段前缀重新前向一次，注意力段是 O(t²)、")
+        ConsoleReport.Note("  输出层也是 O(t)；有缓存时历史 K/V 直接读，两者都降为 O(t) / O(1)。")
+        ConsoleReport.Note("  因此真正该看的是「单步耗时随 t 的走向」—— 有缓存持平、无缓存线性增长。")
+        ConsoleReport.Note("")
+        ConsoleReport.Note($"  平均加速比之所以只有 {speedup:F2}x，是因为 12.8 万词表的输出层与采样排序带来了")
+        ConsoleReport.Note("  约 200 ms 的【固定】单步开销，它在几十个 token 的尺度上稀释了复杂度差异。")
+        ConsoleReport.Note("  把生成长度加大（或把词表调小）之后，这个比值会迅速拉开。")
     End Sub
 
     ''' <summary>
