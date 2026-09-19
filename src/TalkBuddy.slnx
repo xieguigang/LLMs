@@ -13,6 +13,17 @@
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/nlp/NLP/NLP.NET.vbproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/vs_solutions/dev/VisualStudio/VisualStudio.NET5.vbproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/framework/cuda/">
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/cuda/ILCuda/ILCuda.vbproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="../../GCModeller/src/runtime/sciBASIC#/cuda/ILCudaTensor/ILCudaTensor.vbproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/framework/machine_learning/">
     <Project Path="../../GCModeller/src/runtime/sciBASIC#/Data_science/DataMining/DataMining/DataMining.NET5.vbproj">
@@ -33,5 +44,8 @@
   </Folder>
   <Project Path="TalkBuddy/TalkBuddy.vbproj">
     <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="TalkBuddy/test/test.vbproj" Id="68cd8778-7b08-4c22-9c7b-fd70323baecb">
+    <Platform Solution="Debug|x64" Project="x64" />
   </Project>
 </Solution>
