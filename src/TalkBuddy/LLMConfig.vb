@@ -114,8 +114,21 @@ Public Module DemoConfig
     ''' <summary>训练 batch 里放几条样本。</summary>
     Public Property BatchSize As Integer = 2
 
-    ''' <summary>每条样本的序列长度。</summary>
-    Public Property SequenceLength As Integer = 32
+    ''' <summary>预训练窗口长度（纯文本，窗口可以开得比较小）。</summary>
+    Public Property PretrainSequenceLength As Integer = 32
+
+    ''' <summary>指令 SFT 的序列长度（样本很短）。</summary>
+    Public Property InstructionSequenceLength As Integer = 48
+
+    ''' <summary>
+    ''' 工具调用 SFT 的序列长度。
+    ''' </summary>
+    ''' <remarks>
+    ''' 明显比前两个阶段长，因为一条完整的工具调用轨迹要装下"工具清单 + 问题 +
+    ''' 调用片段 + 工具结果 + 回答"。注意训练成本与序列长度成正比（LM head 是
+    ''' <c>N × d_model × vocab</c> 级别的矩阵乘），因此这个值不能随意加大。
+    ''' </remarks>
+    Public Property ToolSequenceLength As Integer = 128
 
     ''' <summary>解耦权重衰减。</summary>
     Public Property WeightDecay As Double = 0.01
