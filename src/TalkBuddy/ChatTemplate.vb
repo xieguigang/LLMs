@@ -264,14 +264,23 @@ Public Class ChatTemplate
         For b As Integer = 0 To batchSize - 1
             Dim sample = samples(b Mod samples.Count)
 
-            ' 训练窗口需要 seqLen + 1 个 token 才能产生 seqLen 个预测目标；
-            ' 这里多留 1 个，超出部分截断。
-            Dim take = System.Math.Min(sample.TokenIds.Length, sequenceLength + 1)
+            ' 训练窗口需要 seqLen + 1 个 token 才能产生 seqLen 个预测目标。
+            Dim window = sequenceLength + 1
+            Dim start As Integer = 0
+
+            If sample.TokenIds.Length > window Then
+                ' 样本超窗时取<b>尾部</b>而不是头部：assistant 的内容永远在末尾，
+                ' 取头部会把最该学习的部分整个丢掉 —— 损失掩码会全为 False，
+                ' 表现为"某个训练步 loss 恒为 0"，而且不会报任何错。
+                start = sample.TokenIds.Length - window
+            End If
+
+            Dim take = System.Math.Min(sample.TokenIds.Length - start, window)
             Dim row(take - 1) As Integer
             Dim rowMask(take - 1) As Boolean
 
-            Call Array.Copy(sample.TokenIds, row, take)
-            Call Array.Copy(sample.LossMask, rowMask, take)
+            Call Array.Copy(sample.TokenIds, start, row, 0, take)
+            Call Array.Copy(sample.LossMask, start, rowMask, 0, take)
 
             If take < sequenceLength + 1 Then
                 ReDim Preserve row(sequenceLength)

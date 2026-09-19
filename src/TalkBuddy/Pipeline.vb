@@ -496,7 +496,10 @@ Public Class DemoPipeline
         Dim systemPrompt = _registry.RenderCompactCatalog()
 
         ConsoleReport.Note("")
-        ConsoleReport.Note("注入 prompt 的工具清单（readme 里「把 Schema 变成 token」的第一步）：")
+        ConsoleReport.Note("完整的 JSON Schema 注入形态（readme 里「把 Schema 变成 token」讲的就是这一步）：")
+        ConsoleReport.Note(_registry.RenderToolCatalog(), 4)
+        ConsoleReport.Note("")
+        ConsoleReport.Note("实际喂给模型的紧凑版（小模型上下文预算窄，清单必须省着用；训练与推理使用同一版）：")
         ConsoleReport.Note(systemPrompt, 4)
 
         Dim agent As New AgentLoop(_model, _codec, _registry)
