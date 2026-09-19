@@ -1,0 +1,159 @@
+' ---------------------------------------------------------------------------
+' TalkBuddy 的 demo 配置集中处
+'
+' 这里只放"这个 demo 选了什么超参"，不放算法。算法在
+' Microsoft.VisualBasic.MachineLearning.LLM 命名空间中。
+'
+' 关于模型规模：选的是"能在一台普通机器上把三阶段训练跑完"的量级。
+' 参数量的绝对大头是词嵌入/输出层（10 万词表 × d_model），这也是为什么
+' 输出层与词嵌入做了权重绑定 —— 否则这一项会再翻一倍。
+' ---------------------------------------------------------------------------
+
+Imports Microsoft.VisualBasic.MachineLearning.LLM
+
+''' <summary>demo 的模型 / 训练 / 分词器配置。</summary>
+Public Module DemoConfig
+
+#Region "分词器"
+
+    ''' <summary>
+    ''' DeepSeek 分词器模型目录（内含 tokenizer.json 与 tokenizer_config.json）。
+    ''' </summary>
+    ''' <remarks>
+    ''' 可用环境变量 <c>TALKBUDDY_TOKENIZER</c> 覆盖，便于把仓库搬到别的位置。
+    ''' </remarks>
+    Public Const DefaultTokenizerDirectory As String =
+        "E:\codebuddy\GCModeller\src\runtime\sciBASIC#\nlp\hugging_face_tokenizer"
+
+    ''' <summary>解析分词器目录：优先环境变量，其次默认绝对路径。</summary>
+    Public Function ResolveTokenizerDirectory() As String
+        Dim fromEnv = Environment.GetEnvironmentVariable("TALKBUDDY_TOKENIZER")
+
+        If Not String.IsNullOrEmpty(fromEnv) Then Return fromEnv
+
+        Return DefaultTokenizerDirectory
+    End Function
+
+    ''' <summary>
+    ''' 词表上限。
+    ''' </summary>
+    ''' <remarks>
+    ''' <c>0</c> 表示使用 DeepSeek 的<b>全量</b>词表（约 10 万），这是本 demo 的默认选择。
+    ''' 设成较小的值（如 4096）可以把 LM head 的矩阵乘缩小一个数量级，用于快速冒烟；
+    ''' 此时超出上限的 id 会被映射到句尾标记，语义会变差，仅供跑通流程。
+    ''' </remarks>
+    Public Property VocabularyLimit As Integer = 0
+
+#End Region
+
+#Region "模型结构"
+
+    ''' <summary>
+    ''' demo 模型的超参。
+    ''' </summary>
+    ''' <param name="vocabSize">词表大小（由分词器适配器给出）</param>
+    Public Function CreateModelConfig(vocabSize As Integer) As LLMModelConfig
+        Return New LLMModelConfig With {
+            .VocabSize = vocabSize,
+            .DModel = 128,
+            .NumLayers = 4,
+            .NumHeads = 4,
+            .NumKvHeads = 4,
+            .HeadDim = 32,
+            .MaxSeqLen = 256,
+            .RopeTheta = 10000.0,
+            .DenseFfnHidden = 0,
+            ' ---- MoE：首层稠密，其余三层走 DeepSeekMoE ----
+            .UseMoE = True,
+            .MoEStartLayer = 1,
+            .NumRoutedExperts = 8,
+            .TopKExperts = 2,
+            .NumSharedExperts = 1,
+            .ExpertHidden = 0,
+            ' ---- 节点受限路由：4 个"节点"，每 token 最多落在 2 个节点内 ----
+            .NodeGroups = 4,
+            .MaxNodesPerToken = 2,
+            .BalanceBiasRate = 0.001
+        }
+    End Function
+
+    ''' <summary>
+    ''' 只用一个批次即可跑通的极小配置（用于验证流程，不用于观察学习效果）。
+    ''' </summary>
+    Public Function CreateSmokeModelConfig(vocabSize As Integer) As LLMModelConfig
+        Dim config = CreateModelConfig(vocabSize)
+
+        config.NumLayers = 2
+        config.DModel = 96
+        config.NumHeads = 4
+        config.NumKvHeads = 2       ' GQA：KV Cache 缩小 2 倍
+        config.HeadDim = 24
+        config.MaxSeqLen = 96
+        config.NumRoutedExperts = 4
+        config.TopKExperts = 2
+        config.NumSharedExperts = 1
+        config.NodeGroups = 2
+        config.MaxNodesPerToken = 1
+
+        Return config
+    End Function
+
+#End Region
+
+#Region "训练超参"
+
+    ''' <summary>单个训练阶段的步数。</summary>
+    Public Property PretrainSteps As Integer = 30
+
+    ''' <summary>指令跟随 SFT 的步数。</summary>
+    Public Property InstructionSftSteps As Integer = 30
+
+    ''' <summary>Function Calling SFT 的步数。</summary>
+    Public Property ToolSftSteps As Integer = 30
+
+    ''' <summary>训练 batch 里放几条样本。</summary>
+    Public Property BatchSize As Integer = 2
+
+    ''' <summary>每条样本的序列长度。</summary>
+    Public Property SequenceLength As Integer = 32
+
+    ''' <summary>解耦权重衰减。</summary>
+    Public Property WeightDecay As Double = 0.01
+
+    ''' <summary>峰值学习率。小模型 + 小语料用大一点的学习率更容易在几十步内看到 loss 下降。</summary>
+    Public Property LearningRate As Double = 0.0015
+
+    ''' <summary>学习率 warmup 步数。</summary>
+    Public Property WarmupSteps As Integer = 5
+
+    ''' <summary>全局梯度范数裁剪上限。</summary>
+    Public Property MaxGradNorm As Double = 1.0
+
+    ''' <summary>按给定步数为某个阶段构造训练配置。</summary>
+    Public Function CreateTrainingConfig(totalSteps As Integer) As TrainingConfig
+        Return New TrainingConfig With {
+            .LearningRate = LearningRate,
+            .MinLearningRate = LearningRate * 0.1,
+            .WarmupSteps = WarmupSteps,
+            .TotalSteps = totalSteps,
+            .MaxGradNorm = MaxGradNorm,
+            .UseCosineDecay = True
+        }
+    End Function
+
+#End Region
+
+#Region "推理默认值"
+
+    ''' <summary>观察"语言建模"效果时的最大新生成 token 数。</summary>
+    Public Property MaxNewTokens As Integer = 20
+
+    ''' <summary>是否尝试注册 CUDA 后端。</summary>
+    Public Property TryCuda As Boolean = True
+
+    ''' <summary>固定随机种子，保证整次运行可复现。</summary>
+    Public Property RandomSeed As Integer = 20240919
+
+#End Region
+
+End Module
