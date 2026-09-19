@@ -213,7 +213,8 @@ Public Class DemoPipeline
         ConsoleReport.KeyValue("window", $"batch={DemoConfig.BatchSize}, seq={DemoConfig.PretrainSequenceLength} " &
                                           $"→ 每步 {DemoConfig.BatchSize * DemoConfig.PretrainSequenceLength} 个预测目标")
         ConsoleReport.KeyValue("steps", steps)
-        ConsoleReport.KeyValue("learning rate", $"{DemoConfig.LearningRate} (warmup {DemoConfig.WarmupSteps} + cosine)")
+        ConsoleReport.KeyValue("learning rate", $"{DemoConfig.EffectiveLearningRate} " &
+                                                  $"(warmup {DemoConfig.WarmupSteps} + cosine；按规模档位调整)")
         ConsoleReport.Note("")
         ConsoleReport.Note("注意：LM head 是 [d_model] × [vocab] 级别的矩阵乘，在 10 万词表下它是整步耗时的大头。")
 
@@ -284,7 +285,11 @@ Public Class DemoPipeline
 
         ConsoleReport.Section("3. Stage 2 · 指令跟随 SFT")
 
-        Dim samples = _instructionSynth.CreateSamples(System.Math.Max(steps * DemoConfig.BatchSize, 16))
+        ' 合成规模：模板合成可以无限生成，因此"数据量"本身不是瓶颈。
+        ' 这里按 32 倍步数生成一个足够大的样本池，再让每步从池中<b>跨区段</b>取样，
+        ' 使整个池真正被用上（若只按 step×batch 顺序取，几步之后池的绝大部分都没被读过）。
+        Dim samples = _instructionSynth.CreateSamples(System.Math.Max(steps * DemoConfig.BatchSize * 32, 1024))
+        Dim stride = System.Math.Max(1, samples.Count \ System.Math.Max(1, steps * DemoConfig.BatchSize))
         Dim sample = samples(0)
 
         ConsoleReport.KeyValue("samples", samples.Count)
@@ -302,7 +307,7 @@ Public Class DemoPipeline
         }
 
         For [step] As Integer = 1 To steps
-            Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
+            Dim batchSamples = Slice(samples, ([step] - 1) * DemoConfig.BatchSize * stride, DemoConfig.BatchSize)
             Dim batch = _template.CreateBatch(batchSamples, DemoConfig.InstructionSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 
@@ -315,6 +320,7 @@ Public Class DemoPipeline
 
         ConsoleReport.KeyValue("loss", $"{trainer.History.First().Loss:F4} → {trainer.History.Last().Loss:F4}")
         ConsoleReport.KeyValue("perplexity", $"{trainer.History.First().Perplexity:F2} → {trainer.History.Last().Perplexity:F2}")
+        ConsoleReport.KeyValue("实际取用的样本区段", $"跨 {System.Math.Min(steps * DemoConfig.BatchSize * stride, samples.Count)} / {samples.Count} 条")
     End Sub
 
 #End Region
@@ -327,7 +333,9 @@ Public Class DemoPipeline
 
         ConsoleReport.Section("4. Stage 3 · Function Calling SFT")
 
-        Dim samples = _toolSynth.CreateSamples(System.Math.Max(steps * DemoConfig.BatchSize, 20))
+        ' 与指令 SFT 同理：样本池放大到足以覆盖全部训练步，且每步跨区段取样
+        Dim samples = _toolSynth.CreateSamples(System.Math.Max(steps * DemoConfig.BatchSize * 32, 512))
+        Dim stride = System.Math.Max(1, samples.Count \ System.Math.Max(1, steps * DemoConfig.BatchSize))
 
         ConsoleReport.KeyValue("samples", samples.Count)
         ConsoleReport.KeyValue("window", $"batch={DemoConfig.BatchSize}, seq={DemoConfig.ToolSequenceLength}")
@@ -348,7 +356,7 @@ Public Class DemoPipeline
         }
 
         For [step] As Integer = 1 To steps
-            Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
+            Dim batchSamples = Slice(samples, ([step] - 1) * DemoConfig.BatchSize * stride, DemoConfig.BatchSize)
             Dim batch = _template.CreateBatch(batchSamples, DemoConfig.ToolSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 

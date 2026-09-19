@@ -235,8 +235,34 @@ Public Module DemoConfig
     ''' <summary>解耦权重衰减。</summary>
     Public Property WeightDecay As Double = 0.01
 
-    ''' <summary>峰值学习率。小模型 + 小语料用大一点的学习率更容易在几十步内看到 loss 下降。</summary>
+    ''' <summary>峰值学习率（教学小档的取值）。小模型 + 小语料用大一点更容易在几十步内看到 loss 下降。</summary>
     Public Property LearningRate As Double = 0.0015
+
+    ''' <summary>
+    ''' 按规模档位给出实际使用的峰值学习率。
+    ''' </summary>
+    ''' <remarks>
+    ''' 0.0015 是围绕 1800 万参数的小档调出来的。参数量放大十倍之后同一个学习率过于激进：
+    ''' 实测 2 亿档在工具调用 SFT 阶段出现明显的梯度尖峰（全局梯度范数从 1.8 突增到 1987），
+    ''' 紧接着 loss 变成 NaN。这不是设备常驻特有的问题 —— 关掉设备常驻同样会逼近这个尖峰，
+    ''' 只是主机路径的更新时机不同因而晚一步暴露。
+    ''' <para>
+    ''' 大模型对学习率更敏感是普遍规律（同一学习率下参数量越大越容易发散），
+    ''' 因此这里按档位下调，而不是把损失归咎于某个具体实现。
+    ''' </para>
+    ''' </remarks>
+    Public ReadOnly Property EffectiveLearningRate As Double
+        Get
+            Select Case Scale
+                Case ModelScale.Tiny
+                    Return LearningRate
+                Case ModelScale.Scale400M
+                    Return 0.0002
+                Case Else
+                    Return 0.0004
+            End Select
+        End Get
+    End Property
 
     ''' <summary>
     ''' MoE 负载均衡偏置的步长 u。
@@ -275,9 +301,11 @@ Public Module DemoConfig
 
     ''' <summary>按给定步数为某个阶段构造训练配置。</summary>
     Public Function CreateTrainingConfig(totalSteps As Integer) As TrainingConfig
+        Dim peak = EffectiveLearningRate
+
         Return New TrainingConfig With {
-            .LearningRate = LearningRate,
-            .MinLearningRate = LearningRate * 0.1,
+            .LearningRate = peak,
+            .MinLearningRate = peak * 0.1,
             .WarmupSteps = WarmupSteps,
             .TotalSteps = totalSteps,
             .MaxGradNorm = MaxGradNorm,

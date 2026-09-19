@@ -133,6 +133,44 @@ Public Class EmbeddedCorpus
             Call text.AppendLine("The key value cache turns quadratic decoding into linear decoding.")
             Call text.AppendLine("Tool calling is a contract written in tokens between the model and the framework.")
 
+            ' ---- 扩充主题：向量与嵌入 ----
+            Call text.AppendLine("嵌入向量把离散的词映射到连续的向量空间，语义相近的词在空间里的距离也更近。")
+            Call text.AppendLine("位置的顺序对语言至关重要，同一个词出现在句首和句尾往往完全改变了整句话的意思。")
+            Call text.AppendLine("旋转位置编码把位置信息写成一次与位置相关的旋转，于是内积只依赖两个位置的相对距离。")
+            Call text.AppendLine("相对位置的优势是外推：训练时只见过短序列，推理时仍然能处理更长的输入。")
+            Call text.AppendLine("归一化决定了数值是否能稳定地穿过几十层网络，预归一化让梯度更容易回传。")
+            Call text.AppendLine("均方根归一化省掉了去均值的步骤，只按能量缩放，因此更快也更省内存。")
+            Call text.AppendLine("门控线性单元让前馈网络同时学一个内容分支和一个开关分支，两者相乘得到输出。")
+            Call text.AppendLine("The embedding matrix is shared with the output projection to halve the parameter count.")
+
+            ' ---- 扩充主题：训练与优化 ----
+            Call text.AppendLine("优化器决定了参数如何沿着梯度方向前进，自适应学习率让每个维度拥有各自的有效步长。")
+            Call text.AppendLine("解耦权重衰减把衰减项从梯度里拿出来单独施加，使衰减强度不再被自适应缩放扭曲。")
+            Call text.AppendLine("学习率先预热再余弦衰减，是让大模型训练稳定的常见做法，预热阶段让二阶矩先积累样本。")
+            Call text.AppendLine("梯度裁剪作用于全局范数而不是逐个参数，这样可以保持各参数之间梯度的相对比例。")
+            Call text.AppendLine("数值稳定性贯穿整个训练过程，指数运算前减去最大值、取对数前加上一个极小量都是必要的。")
+            Call text.AppendLine("单精度与双精度之间的取舍是推理与训练里最现实的工程决策之一。")
+            Call text.AppendLine("消费级显卡的双精度吞吐往往只有单精度的几十分之一，因此设备端通常使用单精度计算。")
+            Call text.AppendLine("主机端保留双精度主副本，可以在需要检查点落盘或者与参考实现对比时保持可复现。")
+            Call text.AppendLine("Gradient clipping on the global norm keeps the direction while bounding the step size.")
+
+            ' ---- 扩充主题：推理与部署 ----
+            Call text.AppendLine("批处理能够提升吞吐，因为在解码阶段每一步的计算量很小，瓶颈往往在显存带宽而不是算力。")
+            Call text.AppendLine("分组的键值头让多个查询头共享一组键和值，缓存占用因此可以成倍下降。")
+            Call text.AppendLine("前缀复用是对话场景里很实用的优化，系统提示与历史消息的缓存不必重复计算。")
+            Call text.AppendLine("流式输出把生成的标记立刻推送给调用方，用户体验上更接近实时的对话。")
+            Call text.AppendLine("量化把权重压缩到更低的位宽，以极小的精度损失换取成倍的显存节省。")
+            Call text.AppendLine("容量与计算量并不等价，稀疏激活的模型可以用很大的参数量换来很小的单步计算。")
+            Call text.AppendLine("Batch size trades latency for throughput, and the decoding step is usually memory bound.")
+
+            ' ---- 扩充主题：数据与评测 ----
+            Call text.AppendLine("数据的质量往往比数量更重要，噪声样本会让模型学到错误的模式。")
+            Call text.AppendLine("合成数据可以覆盖真实数据里稀缺的长尾情形，也便于构造带有明确标注的训练轨迹。")
+            Call text.AppendLine("评测要区分能力与格式，既要看内容是否正确，也要看输出是否符合约定的结构。")
+            Call text.AppendLine("困惑度衡量模型对下一个词的意外程度，数值越低说明模型对文本的预测越有把握。")
+            Call text.AppendLine("过拟合在小语料上很容易发生，表现为训练损失继续下降而验证损失开始上升。")
+            Call text.AppendLine("可复现性来自固定的随机种子与确定的算子顺序，这两点在调试数值问题时格外重要。")
+
             Return text.ToString()
         End Get
     End Property
