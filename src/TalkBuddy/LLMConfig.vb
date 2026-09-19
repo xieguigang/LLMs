@@ -71,7 +71,7 @@ Public Module DemoConfig
             .ExpertHidden = 0,
             .NodeGroups = 4,
             .MaxNodesPerToken = 2,
-            .BalanceBiasRate = 0.001
+            .BalanceBiasRate = BalanceBiasRate
         }
 
         ' MoE 从第 1 层开始：第 0 层保持稠密（DeepSeek 的做法），
@@ -151,6 +151,19 @@ Public Module DemoConfig
 
     ''' <summary>峰值学习率。小模型 + 小语料用大一点的学习率更容易在几十步内看到 loss 下降。</summary>
     Public Property LearningRate As Double = 0.0015
+
+    ''' <summary>
+    ''' MoE 负载均衡偏置的步长 u。
+    ''' </summary>
+    ''' <remarks>
+    ''' readme 引用的 DeepSeek 取值是 0.001，但那是配合数十万训练步的尺度。本 demo 的
+    ''' 全部训练只有几十步，u 取太小（实测 0.001 / 0.005）时偏置移动量只有百分之几，
+    ''' 远小于 sigmoid 打分之差，负载均衡根本来不及起作用 —— 累计最大负载比会停在 1.9x 左右。
+    ''' u = 0.05 时偏置在几十步内就能移动到与打分同量级，累计最大负载比降到 1.17x。
+    ''' 代价是即时路由会在"集中 / 分散"之间摆动得更明显（见 ShowMoERouting 的说明）——
+    ''' 这就是无辅助损失负载均衡里"步长"这个超参本身要做的权衡。
+    ''' </remarks>
+    Public Property BalanceBiasRate As Double = 0.05
 
     ''' <summary>学习率 warmup 步数。</summary>
     Public Property WarmupSteps As Integer = 5

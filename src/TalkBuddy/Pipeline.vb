@@ -34,6 +34,9 @@ Public Class DemoPipeline
     Private _cursor As Integer
     Private _eosId As Integer
 
+    ''' <summary>全部训练步的报告，用于展示 MoE 负载均衡的收敛过程。</summary>
+    Private ReadOnly _history As New List(Of TrainingStepReport)
+
     ''' <summary>是否成功切到了 CUDA 后端。</summary>
     Public ReadOnly Property CudaEnabled As Boolean
 
@@ -195,6 +198,8 @@ Public Class DemoPipeline
                                                  DemoConfig.PretrainSequenceLength, _cursor, _eosId)
             Dim report = trainer.TrainStep(batch)
 
+            _history.Add(report)
+
             If _verbosity >= 1 OrElse [step] Mod 5 = 0 OrElse [step] = steps Then
                 Call Console.WriteLine("  " & report.ToString())
             End If
@@ -241,6 +246,8 @@ Public Class DemoPipeline
             Dim batch = _template.CreateBatch(batchSamples, DemoConfig.InstructionSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 
+            _history.Add(report)
+
             If _verbosity >= 1 OrElse [step] Mod 5 = 0 OrElse [step] = steps Then
                 Call Console.WriteLine("  " & report.ToString())
             End If
@@ -283,6 +290,8 @@ Public Class DemoPipeline
             Dim batch = _template.CreateBatch(batchSamples, DemoConfig.ToolSequenceLength, DemoConfig.BatchSize)
             Dim report = trainer.TrainStep(batch)
 
+            _history.Add(report)
+
             If _verbosity >= 1 OrElse [step] Mod 5 = 0 OrElse [step] = steps Then
                 Call Console.WriteLine("  " & report.ToString())
             End If
@@ -292,24 +301,58 @@ Public Class DemoPipeline
         ConsoleReport.KeyValue("perplexity", $"{trainer.History.First().Perplexity:F2} → {trainer.History.Last().Perplexity:F2}")
     End Sub
 
+    ''' <summary>工具调用片段的学习效果。</summary>
+    Public Class ToolCallAccuracy
+
+        ''' <summary>全部被监督位置的 token 级准确率。</summary>
+        Public Property Overall As Double
+
+        ''' <summary>其中"目标是协议保留标记"的那些位置的准确率。</summary>
+        Public Property Structural As Double
+
+        ''' <summary>参与统计的位置总数。</summary>
+        Public Property Total As Integer
+
+        ''' <summary>其中目标是协议保留标记的位置数。</summary>
+        Public Property StructuralTotal As Integer
+
+    End Class
+
     ''' <summary>
     ''' 教师强制下的"调用片段合规率"：逐位置看 argmax 是否等于目标 token。
     ''' </summary>
     ''' <remarks>
+    ''' <para>
     ''' 之所以用教师强制而不是自由生成，是因为它衡量的是"模型是否记住了调用片段的格式"，
     ''' 与采样策略无关，也不会因为一两个 token 走偏而整体判错。
+    ''' </para>
+    ''' <para>
+    ''' 统计分两档，因为它们在 12.8 万词表上的意义完全不同：
+    ''' 内容 token（城市名、数字）是 1/128815 的选择题，几十步训练几乎不可能蒙对；
+    ''' 而<b>协议保留标记</b>（角色边界、工具调用标记、EOS）只有十几个候选，
+    ''' 模型只要学会了"在这个位置该输出哪个信号灯"就能命中 —— 这才是"格式学会了吗"的正解。
+    ''' </para>
     ''' </remarks>
-    Public Function MeasureToolCallAccuracy(Optional sampleCount As Integer = 16) As Double
+    Public Function MeasureToolCallAccuracy(Optional sampleCount As Integer = 16) As ToolCallAccuracy
         Dim samples = _toolSynth.CreateSamples(sampleCount)
         Dim batch = _template.CreateBatch(samples, DemoConfig.ToolSequenceLength, System.Math.Min(4, sampleCount))
+
+        Dim structural As New HashSet(Of Integer)
+
+        For Each marker In ToolCallProtocol.AllMarkers
+            Call structural.Add(_codec.TokenIdOf(marker))
+        Next
+
+        Call structural.Add(_codec.TokenIdOf(ToolCallProtocol.BeginOfSentenceMarker))
 
         _model.Parameters.ZeroGradients()
 
         Dim logits = _model.Forward(batch.TokenIds, batch.BatchSize, batch.SeqLen)
         Dim vocab = logits.Shape(1)
 
+        Dim report As New ToolCallAccuracy()
         Dim correct As Integer = 0
-        Dim total As Integer = 0
+        Dim structuralCorrect As Integer = 0
 
         For n As Integer = 0 To batch.TotalTokens - 1
             If Not batch.LossMask(n) Then Continue For
@@ -325,16 +368,30 @@ Public Class DemoPipeline
                 End If
             Next
 
-            total += 1
+            Dim target = batch.Targets(n)
+            Dim hit = (best = target)
 
-            If best = batch.Targets(n) Then correct += 1
+            report.Total += 1
+            If hit Then correct += 1
+
+            If structural.Contains(target) Then
+                report.StructuralTotal += 1
+                If hit Then structuralCorrect += 1
+            End If
         Next
 
         _model.Parameters.ZeroGradients()
 
-        If total = 0 Then Return 0.0
+        ' 上面这次 Forward 也往 MoE 的负载统计里记了一笔，清掉以免污染后续的偏置更新
+        _model.ResetMoELoadStatistics()
 
-        Return correct / CDbl(total)
+        If report.Total > 0 Then report.Overall = correct / CDbl(report.Total)
+
+        If report.StructuralTotal > 0 Then
+            report.Structural = structuralCorrect / CDbl(report.StructuralTotal)
+        End If
+
+        Return report
     End Function
 
 #End Region
@@ -360,26 +417,56 @@ Public Class DemoPipeline
         _model.Parameters.ZeroGradients()
 
         Dim info = moe.LastRouteInfo
+        Dim labels = Enumerable.Range(0, moe.NumRoutedExperts).Select(Function(i) "expert " & i).ToArray()
+        Dim ideal = 1.0 / moe.NumRoutedExperts
 
         ConsoleReport.KeyValue("config", $"{moe.NumRoutedExperts} routed experts, top-{moe.TopK}, " &
                                           $"{moe.NumSharedExperts} shared expert(s)")
-        ConsoleReport.KeyValue("tokens routed", info.Tokens)
-        ConsoleReport.KeyValue("activated experts", $"{info.ActivatedExperts} / {moe.NumRoutedExperts}")
-        ConsoleReport.KeyValue("max load ratio", $"{info.MaxLoadRatio:F3}x  (1.00 = 完全均匀)")
+        ConsoleReport.KeyValue("理想均匀负载", $"{ideal:P1} / expert")
+
+        ' ---- 1. 累计负载：这才是"均衡有没有生效"的证据 ----
+        Dim lifetime = moe.LifetimeLoad()
+        Dim lifetimeMax = lifetime.Max() / ideal
+
         ConsoleReport.Note("")
-        ConsoleReport.Note("最近一个批次的专家命中分布（以理想均匀负载 1/N 为基准的占比）：")
+        ConsoleReport.Note("训练全过程的累计负载：")
+        ConsoleReport.Note(ConsoleReport.Histogram(lifetime, labels, 36))
+        ConsoleReport.KeyValue("累计最大负载比", $"{lifetimeMax:F2}x  (1.00 = 完全均匀)")
 
-        Dim labels = Enumerable.Range(0, moe.NumRoutedExperts).Select(Function(i) "expert " & i).ToArray()
+        If _history.Count >= 10 Then
+            Dim head = _history.Take(5).Average(Function(r) r.MoEMaxLoadRatio)
+            Dim tail = _history.Skip(_history.Count - 5).Average(Function(r) r.MoEMaxLoadRatio)
 
+            ConsoleReport.KeyValue("逐步最大负载比", $"前 5 步均值 {head:F2}x → 后 5 步均值 {tail:F2}x")
+        End If
+
+        ' ---- 2. 瞬时路由：说明它为什么会摆动 ----
+        ConsoleReport.Note("")
+        ConsoleReport.Note("最近一个批次的即时路由：")
         ConsoleReport.Note(ConsoleReport.Histogram(info.Load, labels, 36))
+        ConsoleReport.KeyValue("即时最大负载比", $"{info.MaxLoadRatio:F2}x")
+        ConsoleReport.KeyValue("被激活的专家数", $"{info.ActivatedExperts} / {moe.NumRoutedExperts}")
 
-        ConsoleReport.Note("当前的选择偏置 b_i（无辅助损失负载均衡的全部状态）：")
+        ' ---- 3. 偏置本身 ----
+        ConsoleReport.Note("")
+        ConsoleReport.Note("当前的选择偏置 b_i —— 无辅助损失负载均衡的全部状态（不接收梯度、不被优化器更新）：")
         ConsoleReport.Note("  " & String.Join("  ", Enumerable.Range(0, moe.NumRoutedExperts).
-                               Select(Function(i) $"b{i}={moe.BalanceBias(i):+0.00000;-0.00000}")))
+                               Select(Function(i) $"b{i}={moe.BalanceBias(i):+0.000;-0.000}")))
 
         ConsoleReport.Note("")
-        ConsoleReport.Note("累计负载（训练全过程）：")
-        ConsoleReport.Note(ConsoleReport.Histogram(moe.LifetimeLoad(), labels, 36))
+        ConsoleReport.Note("怎么读这几张表（这里必须诚实说明本实现的局限）：")
+        ConsoleReport.Note("")
+        ConsoleReport.Note("  * 无辅助损失负载均衡是一个负反馈回路：专家负载过高 → 偏置 b 被压低 → token 转移走 →")
+        ConsoleReport.Note("    它变轻 → b 回升。偏置只有【差值】有意义，整体加一个常数对 Top-K 选择毫无影响。")
+        ConsoleReport.Note("")
+        ConsoleReport.Note("  * 但在【8 个专家 + top-2】这个粒度上，路由本质是「全有全无」的：一个 token 只挑 2 个专家，")
+        ConsoleReport.Note("    所以只要某对专家的打分略微领先，这一批 token 就会几乎全部涌过去，即时负载比直接")
+        ConsoleReport.Note("    贴到上界 4.00x。readme 引用的 DeepSeek-V3 是【256 专家 + top-8】，粒度细得多，")
+        ConsoleReport.Note("    再加上数万到数十万训练步，偏置才来得及把负载真正抹平。")
+        ConsoleReport.Note("")
+        ConsoleReport.Note("  * 因此在这个 demo 上应当看的不是「即时分布是否均匀」（它做不到），而是")
+        ConsoleReport.Note("    「累计分布是否接近均匀」—— 它说明偏置反馈确实在把热点轮换开，")
+        ConsoleReport.Note("    没有任何专家被永久饿死（也就是没有发生 readme 里说的「专家塌缩」）。")
     End Sub
 
 #End Region

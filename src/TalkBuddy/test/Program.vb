@@ -63,16 +63,19 @@ Module Program
 
                 Dim accuracy = pipeline.MeasureToolCallAccuracy(16)
 
-                ConsoleReport.KeyValue("教师强制下的 token 级准确率", $"{accuracy:P1}")
-                ConsoleReport.Note("统计范围只包括损失掩码为 True 的位置（即 assistant 的回复与工具调用片段）。")
-                ConsoleReport.Note("它衡量的是模型是否记住了调用片段的格式，与采样策略无关。")
+                ConsoleReport.KeyValue("全部被监督位置", $"{accuracy.Overall:P1}（{accuracy.Total} 个位置）")
+                ConsoleReport.KeyValue("其中协议标记位置", $"{accuracy.Structural:P1}（{accuracy.StructuralTotal} 个位置）")
+                ConsoleReport.Note("统计范围只包括损失掩码为 True 的位置，即 assistant 的回复与工具调用片段。")
+                ConsoleReport.Note("")
+                ConsoleReport.Note("两档指标要分开看：内容 token 是 12.8 万选一的选择题，几十步训练几乎不可能蒙对；")
+                ConsoleReport.Note("而协议保留标记只有十几个候选，它命中的比例才真正反映「格式学会了吗」。")
             End If
 
             Call pipeline.ShowMoERouting()
-            Call pipeline.DemoConstrainedDecoding("get_weather")
             Call pipeline.DemoSampling("什么是 MoE")
             Call pipeline.VerifyKVCache("什么是注意力")
             Call pipeline.DemoAgent("Beijing 的天气怎么样？", "get_weather")
+            Call pipeline.DemoConstrainedDecoding("get_weather")
             Call pipeline.VerifyPersistence("talkbuddy-demo.model")
 
             Call PrintSummary(pipeline)
