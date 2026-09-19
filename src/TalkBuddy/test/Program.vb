@@ -123,6 +123,10 @@ Module Program
                 Case arg.Equals("--profile", StringComparison.OrdinalIgnoreCase)
                     DemoConfig.ProfileStages = True
 
+                Case arg.Equals("--no-device-resident", StringComparison.OrdinalIgnoreCase)
+                    ParameterSet.EnableDeviceResidency = False
+                    ConsoleReport.Note("已禁用设备常驻训练：全部参数走主机 AdamW（用于 A/B 对比）")
+
                 Case arg.Equals("--no-train", StringComparison.OrdinalIgnoreCase)
                     _skipTraining = True
 

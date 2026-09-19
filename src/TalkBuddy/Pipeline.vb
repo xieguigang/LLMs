@@ -249,7 +249,7 @@ Public Class DemoPipeline
             Dim share = stage.Ms / total
 
             ConsoleReport.Note($"    {stage.Stage,-12}{stage.Ms,9:F1} ms   {share,6:P1}   " &
-                               $"{New String("#"c, CInt(Math.Round(share * 40)))}")
+                               $"{New String("#"c, CInt(System.Math.Round(share * 40)))}")
         Next
     End Sub
 
