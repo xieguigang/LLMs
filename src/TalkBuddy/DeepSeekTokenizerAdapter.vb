@@ -109,7 +109,6 @@ Public Class DeepSeekTokenizerAdapter
 
     Private Sub New(tokenizer As HuggingFaceTokenizer, limit As Integer, verbose As Boolean)
         _tokenizer = tokenizer
-        RawVocabSize = tokenizer.VocabSize
 
         ' ---- 1. 解析协议必须保留的 token ----
         Dim mustKeep As New List(Of Integer)()
@@ -127,13 +126,18 @@ Public Class DeepSeekTokenizerAdapter
             End If
         Next
 
-        ' ---- 2. 建立 id 重映射 ----
-        Dim keepAll = (limit <= 0 OrElse limit >= RawVocabSize)
+        Dim maxSpecial = mustKeep.Max()
 
-        If keepAll Then
+        ' DeepSeek 把角色标记与工具调用标记放在 added_tokens 里，它们的 id 会<b>超出</b>
+        ' BPE 词表本身的长度（BPE 到 128000，而标记的 id 在 128803 附近）。
+        ' 因此 id 空间取两者的上界；中间那段"空洞"id 既不参与编码、解码也拿不到文本，
+        ' 会被词表文本视图标记为不可用。
+        RawVocabSize = System.Math.Max(tokenizer.VocabSize, maxSpecial + 1)
+
+        ' ---- 2. 建立 id 重映射 ----
+        If limit <= 0 OrElse limit >= RawVocabSize Then
             VocabSize = RawVocabSize
             IsRemapped = False
-
             _modelToSource = New Integer(RawVocabSize - 1) {}
 
             For i As Integer = 0 To RawVocabSize - 1
@@ -154,7 +158,9 @@ Public Class DeepSeekTokenizerAdapter
 
             Dim cursor = mustKeep.Count
 
-            For source As Integer = 0 To RawVocabSize - 1
+            ' 普通 token 池只取 BPE 词表本身（[0, VocabSize)），
+            ' 保证每个取到的 source id 都能解码出文本。
+            For source As Integer = 0 To tokenizer.VocabSize - 1
                 If cursor >= limit Then Exit For
                 If mustKeepSet.Contains(source) Then Continue For
 
@@ -163,8 +169,7 @@ Public Class DeepSeekTokenizerAdapter
             Next
 
             If cursor < limit Then
-                Throw New ArgumentException(
-                    $"词表不足以填充 VocabularyLimit={limit}（只凑到 {cursor} 个 token）")
+                Throw New ArgumentException($"词表不足以填充 VocabularyLimit={limit}（只凑到 {cursor} 个 token）")
             End If
         End If
 

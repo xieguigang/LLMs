@@ -106,14 +106,26 @@ Public Module DemoConfig
 
 #Region "训练超参"
 
-    ''' <summary>单个训练阶段的步数。</summary>
-    Public Property PretrainSteps As Integer = 30
+    ' ------------------------------------------------------------------
+    ' 训练步数的选择依据（全量 12.8 万词表 + SIMD CPU 后端实测）：
+    '
+    '   预训练   N =  64 → 约 3.4 s/step
+    '   指令 SFT N =  96 → 约 4.1 s/step
+    '   工具 SFT N = 256 → 约 10  s/step
+    '
+    ' 单步耗时的绝对大头是输出层的 [N, d_model] × [d_model, vocab] 矩阵乘 ——
+    ' 词表越大、序列越长，它越贵。下面的步数把整次演示控制在 10 分钟量级。
+    ' 想更快可以：打开 CUDA（CudaTensor.Register）、减少步数、或临时调小 VocabularyLimit。
+    ' ------------------------------------------------------------------
+
+    ''' <summary>预训练步数。</summary>
+    Public Property PretrainSteps As Integer = 25
 
     ''' <summary>指令跟随 SFT 的步数。</summary>
-    Public Property InstructionSftSteps As Integer = 30
+    Public Property InstructionSftSteps As Integer = 25
 
-    ''' <summary>Function Calling SFT 的步数。</summary>
-    Public Property ToolSftSteps As Integer = 30
+    ''' <summary>Function Calling SFT 的步数（单步最贵，因此用得更少）。</summary>
+    Public Property ToolSftSteps As Integer = 16
 
     ''' <summary>训练 batch 里放几条样本。</summary>
     Public Property BatchSize As Integer = 2
@@ -164,6 +176,15 @@ Public Module DemoConfig
 
     ''' <summary>观察"语言建模"效果时的最大新生成 token 数。</summary>
     Public Property MaxNewTokens As Integer = 20
+
+    ''' <summary>
+    ''' KV Cache 计时对比的固定生成长度。
+    ''' </summary>
+    ''' <remarks>
+    ''' 取值要够长才能看出 O(t²) 与 O(t) 的差距 —— 序列太短时两者都在毫秒级，
+    ''' 测出来的比值基本是噪声。
+    ''' </remarks>
+    Public Property KvCacheProbeTokens As Integer = 32
 
     ''' <summary>是否尝试注册 CUDA 后端。</summary>
     Public Property TryCuda As Boolean = True

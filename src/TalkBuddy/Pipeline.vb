@@ -408,10 +408,11 @@ Public Class DemoPipeline
             Dim sampler As New Sampler(config)
             Dim generator As New TextGenerator(_model, sampler)
 
+            ' 这一节比较的是"采样策略如何改变输出的多样性"，因此刻意<b>不</b>设停止符：
+            ' 否则这个还没训练充分的小模型第一步就吐 EOS，四种策略看起来会完全一样。
             Dim options As New GenerationOptions With {
                 .MaxNewTokens = DemoConfig.MaxNewTokens,
-                .UseCache = True,
-                .StopTokenIds = New Integer() {_eosId}
+                .UseCache = True
             }
 
             Dim result = generator.Generate(promptIds, options)
@@ -468,13 +469,19 @@ Public Class DemoPipeline
         ConsoleReport.Note("序列越长，两者的差距越大 —— 上面这个比值还只是几十个 token 量级的结果。")
     End Sub
 
+    ''' <summary>
+    ''' 用固定长度的贪心生成测量一条路径的耗时。
+    ''' </summary>
+    ''' <remarks>
+    ''' 刻意<b>不</b>设停止符：这里比较的是"同样生成 N 个 token，两条路径各花多久"，
+    ''' 一旦允许提前停止，两条路径的步数可能不同，加速比就没有意义了。
+    ''' </remarks>
     Private Function Generate(promptIds As Integer(), useCache As Boolean) As GenerationResult
         Dim generator As New TextGenerator(_model, New Sampler(SamplingConfig.GreedySampling()))
 
         Dim options As New GenerationOptions With {
-            .MaxNewTokens = DemoConfig.MaxNewTokens,
-            .UseCache = useCache,
-            .StopTokenIds = New Integer() {_eosId}
+            .MaxNewTokens = DemoConfig.KvCacheProbeTokens,
+            .UseCache = useCache
         }
 
         Return generator.Generate(promptIds, options)
@@ -528,8 +535,13 @@ Public Class DemoPipeline
 
             If Not round.HasToolCall Then Continue For
 
-            ConsoleReport.KeyValue("检测到工具信号", ToolCallProtocol.CallsBeginMarker)
-            ConsoleReport.KeyValue("工具名（模型决策）", round.ToolName)
+            If round.ToolDecidedByModel Then
+                ConsoleReport.KeyValue("调用决策", $"模型自主输出 {ToolCallProtocol.CallsBeginMarker}")
+                ConsoleReport.KeyValue("工具名（模型决策）", round.ToolName)
+            Else
+                ConsoleReport.KeyValue("调用决策", "演示模式：工具名由 ForcedToolName 指定")
+                ConsoleReport.KeyValue("工具名（外部指定）", round.ToolName)
+            End If
 
             If round.UsedConstrainedDecoding Then
                 ConsoleReport.KeyValue("约束解码", "已启用 —— 参数结构必然符合 JSON Schema")
