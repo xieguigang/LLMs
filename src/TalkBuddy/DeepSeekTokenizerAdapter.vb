@@ -3,33 +3,73 @@
 '
 ' 它做三件事：
 '
-'   1. 加载 DeepSeek 的 tokenizer.json（全量约 10 万词表）并暴露
-'      <see cref="ITextCodec"/>，供模型与 Agent 循环使用；
+'   1. 加载 DeepSeek 的 tokenizer.json 并暴露 <see cref="ITextCodec"/>，
+'      供模型与 Agent 循环使用；
 '   2. 解析并缓存全部<b>保留 token</b>（角色标记与工具调用标记）的 id
 '      —— 这就是"特殊 token 不是魔法，而是被加进词表的保留 token"那句话的落地；
 '   3. 构建约束解码所需的词表文本视图（<see cref="TokenizerVocabulary"/>）。
 '
-' 第 3 点是一次性的重活：需要把 10 万个 token 逐个单独解码，才能知道每个 token
+' 关于 VocabularyLimit（词表上限）：
+'
+'   默认 0 表示使用<b>全量</b>词表（DeepSeek 的 BPE 词表约 12.8 万），这是本 demo 的
+'   默认选择。把 LM head 从 12.8 万压小一个数量级可以大幅缩短单步耗时，因此提供了
+'   这个旋钮用于快速冒烟。
+'
+'   注意不能简单地"截断前 N 个"：DeepSeek 把角色标记与工具调用标记都排在词表<b>末尾</b>
+'   （id 在 128803 之后），截断会让协议彻底失效。因此这里做的是<b>重映射</b>：
+'
+'       模型词表 = [ 13 个协议必须的保留 token ] + [ 前 N-13 个普通 token ]
+'
+'   id 空间的这种重排对模型完全透明 —— 它只看到一堆整数 id，重要的是
+'   "每个 id 对应什么文本"以及"协议标记始终可用"。
+'
+' 第 3 点是一次性的重活：需要把保留下来的 token 逐个单独解码，才能知道每个 token
 ' "实际贡献了什么文本"。注意不能直接用 IdToToken —— 那给出的是 byte-level 编码后的
 ' 原始词表项（例如 "▁weather"），而真正写进上下文的是解码（ByteLevel 逆映射）之后的文本。
-'
-' 实例加载完成后是只读的，应当在整个 demo 里复用同一份。
 ' ---------------------------------------------------------------------------
 
 Imports System.Collections.Generic
 Imports System.Diagnostics
 Imports Microsoft.VisualBasic.MachineLearning.LLM
-' NLP 工程（NLP.NET.vbproj）的 RootNamespace 是 Microsoft.VisualBasic.Data.NLP，
-' 因此 HuggingFaceTokenizer 的完整命名空间是下面这一长串。
 Imports Microsoft.VisualBasic.Data.NLP.ChineseTokenizer.HuggingFace
 
 Public Class DeepSeekTokenizerAdapter
     Implements ITextCodec
 
+    ''' <summary>
+    ''' 协议必须保留的标记。
+    ''' </summary>
+    ''' <remarks>
+    ''' 这一组 token 会被放在模型词表的最前面，从而保证 VocabularyLimit 取任何值时
+    ''' 角色边界与工具调用协议都完整可用。
+    ''' </remarks>
+    Private Shared ReadOnly MustKeepMarkers As String() = {
+        ToolCallProtocol.BeginOfSentenceMarker,
+        ToolCallProtocol.EndOfSentenceMarker,
+        ToolCallProtocol.UserMarker,
+        ToolCallProtocol.AssistantMarker,
+        ToolCallProtocol.CallsBeginMarker,
+        ToolCallProtocol.CallsEndMarker,
+        ToolCallProtocol.CallBeginMarker,
+        ToolCallProtocol.CallEndMarker,
+        ToolCallProtocol.SepMarker,
+        ToolCallProtocol.OutputsBeginMarker,
+        ToolCallProtocol.OutputsEndMarker,
+        ToolCallProtocol.OutputBeginMarker,
+        ToolCallProtocol.OutputEndMarker
+    }
+
     Private ReadOnly _tokenizer As HuggingFaceTokenizer
-    Private ReadOnly _unkId As Integer
+
+    ''' <summary>模型 id → 分词器原始 id。</summary>
+    Private ReadOnly _modelToSource As Integer()
+
+    ''' <summary>分词器原始 id → 模型 id（只包含被保留的 id）。</summary>
+    Private ReadOnly _sourceToModel As Dictionary(Of Integer, Integer)
+
     Private ReadOnly _vocabView As TokenizerVocabulary
     Private ReadOnly _specialIds As New Dictionary(Of String, Integer)()
+    Private ReadOnly _unkId As Integer
 
     ''' <summary>底层分词器（需要做 tokenize 展示时可以取用）。</summary>
     Public ReadOnly Property Tokenizer As HuggingFaceTokenizer
@@ -41,8 +81,11 @@ Public Class DeepSeekTokenizerAdapter
     ''' <summary>分词器原始词表大小。</summary>
     Public ReadOnly Property RawVocabSize As Integer
 
-    ''' <summary>本适配器实际使用的词表大小（受 <c>VocabularyLimit</c> 约束）。</summary>
+    ''' <summary>本适配器实际暴露给模型的词表大小。</summary>
     Public ReadOnly Property VocabSize As Integer
+
+    ''' <summary>是否发生了词表重映射（即 VocabularyLimit 小于原始词表）。</summary>
+    Public ReadOnly Property IsRemapped As Boolean
 
     ''' <summary>约束解码使用的词表文本视图。</summary>
     Public ReadOnly Property Vocabulary As TokenizerVocabulary Implements ITextCodec.Vocabulary
@@ -51,7 +94,7 @@ Public Class DeepSeekTokenizerAdapter
         End Get
     End Property
 
-    ''' <summary>保留 token 的字面形式 → token id。</summary>
+    ''' <summary>保留 token 的字面形式 → 模型 id。</summary>
     Public ReadOnly Property SpecialTokenIds As IReadOnlyDictionary(Of String, Integer)
         Get
             Return _specialIds
@@ -61,26 +104,84 @@ Public Class DeepSeekTokenizerAdapter
     ''' <summary>构建词表所花的时间（毫秒），用于说明这一步是一次性成本。</summary>
     Public ReadOnly Property VocabularyBuildMilliseconds As Double
 
-    ''' <summary>词表中"无法用于约束解码"的 token 个数（保留 token 与被截断的部分）。</summary>
+    ''' <summary>词表中"无法用于约束解码"的 token 个数。</summary>
     Public ReadOnly Property UnusableTokens As Integer
 
     Private Sub New(tokenizer As HuggingFaceTokenizer, limit As Integer, verbose As Boolean)
         _tokenizer = tokenizer
         RawVocabSize = tokenizer.VocabSize
 
-        If limit > 0 AndAlso limit < RawVocabSize Then
-            VocabSize = limit
-        Else
+        ' ---- 1. 解析协议必须保留的 token ----
+        Dim mustKeep As New List(Of Integer)()
+        Dim mustKeepSet As New HashSet(Of Integer)()
+
+        For Each marker In MustKeepMarkers
+            Dim id As Integer? = tokenizer.TokenToId(marker)
+
+            If Not id.HasValue Then
+                Throw New InvalidOperationException($"分词器词表中缺少协议所需的保留 token：'{marker}'")
+            End If
+
+            If mustKeepSet.Add(id.Value) Then
+                Call mustKeep.Add(id.Value)
+            End If
+        Next
+
+        ' ---- 2. 建立 id 重映射 ----
+        Dim keepAll = (limit <= 0 OrElse limit >= RawVocabSize)
+
+        If keepAll Then
             VocabSize = RawVocabSize
+            IsRemapped = False
+
+            _modelToSource = New Integer(RawVocabSize - 1) {}
+
+            For i As Integer = 0 To RawVocabSize - 1
+                _modelToSource(i) = i
+            Next
+        Else
+            If limit < mustKeep.Count Then
+                Throw New ArgumentException($"VocabularyLimit={limit} 小于协议必须保留的 {mustKeep.Count} 个 token")
+            End If
+
+            VocabSize = limit
+            IsRemapped = True
+            _modelToSource = New Integer(limit - 1) {}
+
+            For i As Integer = 0 To mustKeep.Count - 1
+                _modelToSource(i) = mustKeep(i)
+            Next
+
+            Dim cursor = mustKeep.Count
+
+            For source As Integer = 0 To RawVocabSize - 1
+                If cursor >= limit Then Exit For
+                If mustKeepSet.Contains(source) Then Continue For
+
+                _modelToSource(cursor) = source
+                cursor += 1
+            Next
+
+            If cursor < limit Then
+                Throw New ArgumentException(
+                    $"词表不足以填充 VocabularyLimit={limit}（只凑到 {cursor} 个 token）")
+            End If
         End If
 
-        ' 词表被截断时，超界 id 统一落到句尾标记上（仅用于冒烟档，语义会变差）
-        Dim eos As Integer? = tokenizer.TokenToId(ToolCallProtocol.EndOfSentenceMarker)
+        _sourceToModel = New Dictionary(Of Integer, Integer)(_modelToSource.Length)
 
-        _unkId = If(VocabSize < RawVocabSize, If(eos.HasValue, eos.Value, 0), -1)
+        For model As Integer = 0 To _modelToSource.Length - 1
+            _sourceToModel(_modelToSource(model)) = model
+        Next
 
-        Call ResolveSpecialTokens()
+        ' 超出保留范围的 token 统一落到句尾标记上
+        _unkId = _sourceToModel(tokenizer.TokenToId(ToolCallProtocol.EndOfSentenceMarker).Value)
 
+        For Each marker In MustKeepMarkers
+            _specialIds(marker) = _sourceToModel(tokenizer.TokenToId(marker).Value)
+        Next
+
+        ' ---- 3. 词表文本视图 ----
         Dim elapsed As Double = 0.0
 
         _vocabView = BuildVocabulary(VocabSize, elapsed)
@@ -88,8 +189,9 @@ Public Class DeepSeekTokenizerAdapter
         UnusableTokens = VocabSize - _vocabView.UsableTokens - _vocabView.SpecialTokens
 
         If verbose Then
-            Call Console.WriteLine($"[tokenizer] vocab={VocabSize:N0} (raw {RawVocabSize:N0}), " &
-                                   $"model={tokenizer.ModelType}, special_tokens={_specialIds.Count}")
+            Dim mode = If(IsRemapped, $"remapped (limit={limit:N0})", "full")
+
+            Call Console.WriteLine($"[tokenizer] model={tokenizer.ModelType}, vocab={VocabSize:N0} of {RawVocabSize:N0} [{mode}]")
             Call Console.WriteLine($"[tokenizer] constrained-decoding view built in {elapsed:F0} ms: " &
                                    $"{_vocabView.UsableTokens:N0} usable tokens over {_vocabView.FirstCharacters.Length:N0} first-characters")
         End If
@@ -113,43 +215,10 @@ Public Class DeepSeekTokenizerAdapter
         Return New DeepSeekTokenizerAdapter(tokenizer, limit, verbose)
     End Function
 
-#Region "保留 token"
-
-    ''' <summary>
-    ''' 解析协议里用到的全部保留 token 的 id。
-    ''' </summary>
-    ''' <remarks>
-    ''' 任何一个缺失都说明分词器与协议不匹配（例如换成了别的模型），
-    ''' 此时必须立刻失败而不是静默降级 —— 否则后续生成的文本会缺失信号灯，
-    ''' 表现为"模型永远不调用工具"这种极难排查的现象。
-    ''' </remarks>
-    Private Sub ResolveSpecialTokens()
-        Dim markers = ToolCallProtocol.AllMarkers _
-            .Concat(New String() {ToolCallProtocol.BeginOfSentenceMarker}).Distinct()
-
-        For Each marker In markers
-            Dim id As Integer? = _tokenizer.TokenToId(marker)
-
-            If Not id.HasValue Then
-                Throw New InvalidOperationException($"分词器词表中缺少协议所需的保留 token：'{marker}'")
-            End If
-
-            If id.Value >= VocabSize Then
-                Throw New InvalidOperationException(
-                    $"保留 token '{marker}' 的 id={id.Value} 超出 VocabularyLimit={VocabSize}；" &
-                    "请把 VocabularyLimit 调大，或设为 0 使用全量词表")
-            End If
-
-            _specialIds(marker) = id.Value
-        Next
-    End Sub
-
-#End Region
-
 #Region "词表文本视图"
 
     ''' <summary>
-    ''' 逐个解码词表中的每一个 token，得到"该 token 贡献的文本"，并建立首字符分桶。
+    ''' 逐个解码被保留的 token，得到"该 token 贡献的文本"，并建立首字符分桶。
     ''' </summary>
     ''' <remarks>
     ''' 判定"是否为保留 token"的方式是：跳过特殊 token 以后什么都不剩。
@@ -161,13 +230,14 @@ Public Class DeepSeekTokenizerAdapter
         Dim texts(limit - 1) As String
         Dim special(limit - 1) As Boolean
 
-        For id As Integer = 0 To limit - 1
-            Dim asPlain = _tokenizer.Decode(New Integer() {id}, skipSpecialTokens:=False)
+        For model As Integer = 0 To limit - 1
+            Dim source = _modelToSource(model)
+            Dim asPlain = _tokenizer.Decode(New Integer() {source}, skipSpecialTokens:=False)
 
-            texts(id) = asPlain
+            texts(model) = asPlain
 
             If asPlain.Length > 0 Then
-                special(id) = _tokenizer.Decode(New Integer() {id}, skipSpecialTokens:=True).Length = 0
+                special(model) = _tokenizer.Decode(New Integer() {source}, skipSpecialTokens:=True).Length = 0
             End If
         Next
 
@@ -191,26 +261,34 @@ Public Class DeepSeekTokenizerAdapter
     Public Function Encode(text As String) As Integer() Implements ITextCodec.Encode
         If String.IsNullOrEmpty(text) Then Return New Integer() {}
 
-        Dim ids = _tokenizer.EncodeToIds(text, addSpecialTokens:=False)
+        Dim sourceIds = _tokenizer.EncodeToIds(text, addSpecialTokens:=False)
+        Dim result(sourceIds.Length - 1) As Integer
 
-        If _unkId < 0 Then Return ids
+        For i As Integer = 0 To sourceIds.Length - 1
+            Dim model As Integer = -1
 
-        ' 词表被截断时做一次 remap
-        Dim mapped(ids.Length - 1) As Integer
+            If Not _sourceToModel.TryGetValue(sourceIds(i), model) Then
+                model = _unkId
+            End If
 
-        For i As Integer = 0 To ids.Length - 1
-            mapped(i) = If(ids(i) < VocabSize, ids(i), _unkId)
+            result(i) = model
         Next
 
-        Return mapped
+        Return result
     End Function
 
     ''' <summary>token → 文本。</summary>
     Public Function Decode(ids As IEnumerable(Of Integer)) As String Implements ITextCodec.Decode
-        Return _tokenizer.Decode(ids, skipSpecialTokens:=False)
+        Dim source As New List(Of Integer)()
+
+        For Each id In ids
+            Call source.Add(SourceIdOf(id))
+        Next
+
+        Return _tokenizer.Decode(source, skipSpecialTokens:=False)
     End Function
 
-    ''' <summary>查询标记对应的 token id；不存在时返回 -1。</summary>
+    ''' <summary>查询标记对应的模型 id；不存在时返回 -1。</summary>
     Public Function TokenIdOf(marker As String) As Integer Implements ITextCodec.TokenIdOf
         Dim id As Integer = -1
 
@@ -223,11 +301,18 @@ Public Class DeepSeekTokenizerAdapter
 
 #Region "便捷访问"
 
-    ''' <summary>单个 token 贡献的文本（用于逐 token 打印协议）。</summary>
-    Public Function TokenTextOf(id As Integer) As String
-        If id < 0 OrElse id >= VocabSize Then Return "<out-of-range>"
+    ''' <summary>模型 id → 分词器原始 id（越界时落到 unk）。</summary>
+    Public Function SourceIdOf(modelId As Integer) As Integer
+        If modelId < 0 OrElse modelId >= _modelToSource.Length Then Return _modelToSource(_unkId)
 
-        Return _tokenizer.Decode(New Integer() {id}, skipSpecialTokens:=False)
+        Return _modelToSource(modelId)
+    End Function
+
+    ''' <summary>单个 token 贡献的文本（用于逐 token 打印协议）。</summary>
+    Public Function TokenTextOf(modelId As Integer) As String
+        If modelId < 0 OrElse modelId >= _modelToSource.Length Then Return "<out-of-range>"
+
+        Return _tokenizer.Decode(New Integer() {_modelToSource(modelId)}, skipSpecialTokens:=False)
     End Function
 
     ''' <summary>把 token 序列渲染成 <c>[id]文本</c> 串联的形式，便于观察协议结构。</summary>
