@@ -117,7 +117,15 @@ Public Class DemoPipeline
             Dim ok = GpuTensor.CudaTensor.Register()
 
             If ok Then
-                ConsoleReport.KeyValue("cuda", $"已启用（{GpuTensor.CudaTensor.Current?.Name}）")
+                Dim backend = GpuTensor.CudaTensor.Current
+
+                ConsoleReport.KeyValue("cuda", $"已启用（{backend?.Name}）")
+                ConsoleReport.KeyValue("device", backend?.DescribeDevice())
+
+                ' 内核可用性必须显式打印：任一内核缺失会静默回退 CPU，
+                ' 没有这份诊断就无法分清"算得慢"和"根本没上 GPU"
+                ConsoleReport.KeyValue("kernels", backend?.DescribeKernels())
+
                 Return True
             End If
 
@@ -188,7 +196,9 @@ Public Class DemoPipeline
         ConsoleReport.Note("")
         ConsoleReport.Note("注意：LM head 是 [d_model] × [vocab] 级别的矩阵乘，在 10 万词表下它是整步耗时的大头。")
 
-        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps))
+        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps)) With {
+            .ProfileStages = DemoConfig.ProfileStages
+        }
         Dim watch = Diagnostics.Stopwatch.StartNew()
 
         _cursor = 0
@@ -211,9 +221,36 @@ Public Class DemoPipeline
                                               $"({watch.Elapsed.TotalMilliseconds / steps:F0} ms/step)")
         ConsoleReport.KeyValue("loss", $"{trainer.History.First().Loss:F4} → {trainer.History.Last().Loss:F4}")
         ConsoleReport.KeyValue("perplexity", $"{trainer.History.First().Perplexity:F2} → {trainer.History.Last().Perplexity:F2}")
+        Call PrintStageProfile(trainer)
         ConsoleReport.Note("")
         ConsoleReport.Note("loss 曲线：")
         ConsoleReport.Note(ConsoleReport.LossCurve(trainer.History.Select(Function(r) r.Loss)))
+    End Sub
+
+    ''' <summary>
+    ''' 打印最后一次训练步的分阶段耗时。
+    ''' </summary>
+    ''' <remarks>
+    ''' 存在的意义是让"瓶颈在哪"变成一个可验证的观测事实，而不是靠算力公式推测 ——
+    ''' 实测里主机侧的类型转换与逐元素循环经常比内核计算更贵。
+    ''' </remarks>
+    Private Shared Sub PrintStageProfile(trainer As LMTrainer)
+        If trainer Is Nothing OrElse Not trainer.ProfileStages Then Return
+        If trainer.LastStageMilliseconds.Count = 0 Then Return
+
+        Dim total = trainer.LastStageMilliseconds.Sum(Function(s) s.Ms)
+
+        If total <= 0 Then Return
+
+        ConsoleReport.Note("")
+        ConsoleReport.Note("最后一步的分阶段耗时（实测）：")
+
+        For Each stage In trainer.LastStageMilliseconds
+            Dim share = stage.Ms / total
+
+            ConsoleReport.Note($"    {stage.Stage,-12}{stage.Ms,9:F1} ms   {share,6:P1}   " &
+                               $"{New String("#"c, CInt(Math.Round(share * 40)))}")
+        Next
     End Sub
 
 #End Region
@@ -239,7 +276,9 @@ Public Class DemoPipeline
         ConsoleReport.Note("损失掩码的实际作用是：模型只在 assistant 的 token 上学「该怎么回答」，")
         ConsoleReport.Note("不会去学「复述用户问了什么」——那样只会把有限的容量浪费在记忆输入上。")
 
-        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps))
+        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps)) With {
+            .ProfileStages = DemoConfig.ProfileStages
+        }
 
         For [step] As Integer = 1 To steps
             Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
@@ -283,7 +322,9 @@ Public Class DemoPipeline
                                "（框架回填的工具结果，模型不需要学习「预测工具返回什么」）")
         End If
 
-        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps))
+        Dim trainer As New LMTrainer(_model, DemoConfig.CreateTrainingConfig(steps)) With {
+            .ProfileStages = DemoConfig.ProfileStages
+        }
 
         For [step] As Integer = 1 To steps
             Dim batchSamples = Slice(samples, [step] * DemoConfig.BatchSize, DemoConfig.BatchSize)
@@ -299,6 +340,7 @@ Public Class DemoPipeline
 
         ConsoleReport.KeyValue("loss", $"{trainer.History.First().Loss:F4} → {trainer.History.Last().Loss:F4}")
         ConsoleReport.KeyValue("perplexity", $"{trainer.History.First().Perplexity:F2} → {trainer.History.Last().Perplexity:F2}")
+        Call PrintStageProfile(trainer)
     End Sub
 
     ''' <summary>工具调用片段的学习效果。</summary>

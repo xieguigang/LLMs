@@ -24,6 +24,7 @@
 '   --quick           冒烟档：步数压到 3、词表压到 4096，用于快速验证流程
 '   --quiet           只在阶段之间打印，不逐训练步打印
 '   --no-train        跳过训练，直接做推理演示（只观察机制）
+'   --profile         打印训练步内部各阶段的实测耗时（用于定位瓶颈）
 ' ---------------------------------------------------------------------------
 
 Imports System
@@ -118,6 +119,9 @@ Module Program
 
                 Case arg.Equals("--quiet", StringComparison.OrdinalIgnoreCase)
                     _verbosity = 0
+
+                Case arg.Equals("--profile", StringComparison.OrdinalIgnoreCase)
+                    DemoConfig.ProfileStages = True
 
                 Case arg.Equals("--no-train", StringComparison.OrdinalIgnoreCase)
                     _skipTraining = True

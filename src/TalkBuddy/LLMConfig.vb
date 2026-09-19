@@ -202,6 +202,15 @@ Public Module DemoConfig
     ''' <summary>是否尝试注册 CUDA 后端。</summary>
     Public Property TryCuda As Boolean = True
 
+    ''' <summary>
+    ''' 是否打印训练步内部的分阶段耗时（前向 / 损失 / 反向 / 裁剪 / 更新 / MoE 均衡）。
+    ''' </summary>
+    ''' <remarks>
+    ''' 定位"瓶颈到底在哪"只能靠实测：按公式估算算力时，主机侧的类型转换、
+    ''' 逐元素循环与数据往返往往被低估，而它们经常才是真正的大头。
+    ''' </remarks>
+    Public Property ProfileStages As Boolean = False
+
     ''' <summary>固定随机种子，保证整次运行可复现。</summary>
     Public Property RandomSeed As Integer = 20240919
 
